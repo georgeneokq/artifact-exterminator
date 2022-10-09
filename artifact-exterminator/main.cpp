@@ -1,6 +1,7 @@
 #include <iostream>
+#include "registry.h"
 
 int main()
 {
-	std::cout << "Hello World!\n";	
+	backupRegistry();
 }

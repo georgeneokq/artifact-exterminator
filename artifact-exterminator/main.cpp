@@ -1,7 +1,18 @@
 #include <iostream>
+#include <Windows.h>
+#include "main.h"
 #include "registry.h"
+
 
 int main()
 {
-	backupRegistry();
+	WCHAR registryBackupFolderPath[MAX_PATH + 1] = { 0 };
+	getRegistryBackupFolderPath(MAX_PATH + 1, registryBackupFolderPath);
+	backupRegistry(registryBackupFolderPath);
+}
+
+void getRegistryBackupFolderPath(DWORD nBufferLength, LPWSTR lpBuffer)
+{
+	GetTempPathW(nBufferLength, lpBuffer);
+	wcscat_s(lpBuffer, nBufferLength, REGISTRY_BACKUP_FOLDER_NAME);
 }

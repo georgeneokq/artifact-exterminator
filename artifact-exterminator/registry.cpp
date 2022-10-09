@@ -30,15 +30,13 @@ LPCWSTR getKeyNameByHandle(HKEY hKey)
 	}
 }
 
-void backupRegistry()
+void backupRegistry(LPCWSTR backupPath)
 {
 	WCHAR tempPath[MAX_PATH + 1] = { 0 };
 	GetTempPathW(MAX_PATH + 1, tempPath);
 
 	// Create folder to make registry backup
-	WCHAR registryBackupPath[MAX_PATH + 1 + 30] = { 0 };
-	wsprintf(registryBackupPath, L"%sbackup", tempPath);
-	CreateDirectoryW(registryBackupPath, NULL);
+	CreateDirectoryW(backupPath, NULL);
 
 	HKEY rootHKeys[4] = {
 		HKEY_CURRENT_CONFIG,
@@ -70,7 +68,7 @@ void backupRegistry()
 
 				// Form the file name to save the hive to
 				WCHAR filename[50 + KEY_LIMIT] = { 0 };
-				wsprintf(filename, L"%sbackup\\%s %s.hiv", tempPath, getKeyNameByHandle(rootKeyHandle), subkeyName);
+				wsprintf(filename, L"%s\\%s %s.hiv", backupPath, getKeyNameByHandle(rootKeyHandle), subkeyName);
 
 				// Save the hive
 				int saveKeyErr = RegSaveKeyExW(subkeyHandle, filename, NULL, REG_STANDARD_FORMAT);

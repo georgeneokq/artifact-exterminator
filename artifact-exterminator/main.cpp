@@ -8,7 +8,14 @@ int main()
 {
 	WCHAR registryBackupFolderPath[MAX_PATH + 1] = { 0 };
 	getRegistryBackupFolderPath(MAX_PATH + 1, registryBackupFolderPath);
-	backupRegistry(registryBackupFolderPath);
+
+	// Create folder to make registry backup
+	CreateDirectoryW(registryBackupFolderPath, NULL);
+
+	//backupRegistry(registryBackupFolderPath);
+	backupRegistrySimple(registryBackupFolderPath);
+
+	restoreRegistry(registryBackupFolderPath);
 }
 
 void getRegistryBackupFolderPath(DWORD nBufferLength, LPWSTR lpBuffer)

@@ -130,11 +130,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="RegFileParser.cpp" />
     <ClCompile Include="registry.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h" />
+    <ClInclude Include="RegFileParser.h" />
     <ClInclude Include="registry.h" />
     <ClInclude Include="utils.h" />
   </ItemGroup>

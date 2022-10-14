@@ -157,7 +157,6 @@ void backupRegistrySimple(LPCWSTR backupPath)
 	WaitForMultipleObjects(cRootKeys, processHandles, TRUE, INFINITE);
 	for (int i = 0; i < cRootKeys; i++)
 	{
-		wprintf(L"Closing process %d, thread %d\n", processInfos[i].hProcess, processInfos[i].hThread);
 		CloseHandle(processInfos[i].hThread);
 		CloseHandle(processInfos[i].hProcess);
 	}
@@ -166,8 +165,10 @@ void backupRegistrySimple(LPCWSTR backupPath)
 void restoreRegistry(LPCWSTR backupPath)
 {
 	// Use reg import on the reg files in the specified path
+	WCHAR fullBackupPath[MAX_PATH * 2 + 1];
+	wsprintf(fullBackupPath, L"%s\\*", backupPath);
 	WIN32_FIND_DATA data;
-    HANDLE hFind = FindFirstFileW(backupPath, &data);      // DIRECTORY
+    HANDLE hFind = FindFirstFileW(fullBackupPath, &data);
 	
 	// Assume a maximum of 6 processes
 	PROCESS_INFORMATION processInfos[6] = { 0 };
@@ -176,13 +177,19 @@ void restoreRegistry(LPCWSTR backupPath)
 	int fileIndex = 0;
     if ( hFind != INVALID_HANDLE_VALUE ) {
         do {
+			if (wcscmp(data.cFileName, L".") == 0 || wcscmp(data.cFileName, L"..") == 0)
+				continue;
+			// Form the file name for backup
+			WCHAR fullBackupPath[MAX_PATH * 2 + 1];
+			wsprintf(fullBackupPath, L"%s\\%s", backupPath, data.cFileName);
 			WCHAR cmdLine[256];
+
 			STARTUPINFOW si;
 			ZeroMemory(&si, sizeof(si));
 			si.cb = sizeof(si);
 			PROCESS_INFORMATION pi;
 			ZeroMemory(&pi, sizeof(pi));
-			wsprintf(cmdLine, L"reg import %s", data.cFileName);
+			wsprintf(cmdLine, L"/c reg import %s", fullBackupPath);
 			CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", cmdLine, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
 			processInfos[fileIndex] = pi;
 			processHandles[fileIndex] = pi.hProcess;
@@ -193,7 +200,6 @@ void restoreRegistry(LPCWSTR backupPath)
 	WaitForMultipleObjects(fileIndex + 1, processHandles, TRUE, INFINITE);
 	for (int i = 0; i < fileIndex; i++)
 	{
-		wprintf(L"Closing process %d, thread %d\n", processInfos[i].hProcess, processInfos[i].hThread);
 		CloseHandle(processInfos[i].hThread);
 		CloseHandle(processInfos[i].hProcess);
 	}

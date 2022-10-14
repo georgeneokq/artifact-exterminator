@@ -12,10 +12,7 @@ int main()
 	// Create folder to make registry backup
 	CreateDirectoryW(registryBackupFolderPath, NULL);
 
-	//backupRegistry(registryBackupFolderPath);
-	backupRegistrySimple(registryBackupFolderPath);
-
-	restoreRegistry(registryBackupFolderPath);
+	// Perform more operations here...
 }
 
 void getRegistryBackupFolderPath(DWORD nBufferLength, LPWSTR lpBuffer)

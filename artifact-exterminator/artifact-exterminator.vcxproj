@@ -131,11 +131,13 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="registry.cpp" />
+    <ClCompile Include="shimcache.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h" />
     <ClInclude Include="registry.h" />
+    <ClInclude Include="shimcache.h" />
     <ClInclude Include="utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

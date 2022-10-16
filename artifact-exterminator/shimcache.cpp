@@ -7,11 +7,11 @@
 
 /*
  * Given an array of ShimcacheEntry indexes, check if the given value is within range of any of the entries.
- * @param int value				The value to check for
- * @param size_t arr_size		The size of the array of ShimcacheEntry structs
- * @param ShimcacheEntry* arr	Array of ShimcacheEntry structs
- * @param int* arrIndexFound	Pointer to variable that receives the index at which shimcache entry the value falls under.
- *								If function returns FALSE, ptrIndexFound will have its value set to -1
+ * @param int value             The value to check for
+ * @param size_t arr_size       The size of the array of ShimcacheEntry structs
+ * @param ShimcacheEntry* arr   Array of ShimcacheEntry structs
+ * @param int* arrIndexFound    Pointer to variable that receives the index at which shimcache entry the value falls under.
+ *                              If function returns FALSE, ptrIndexFound will have its value set to -1
 */
 BOOL valueInRange(int value, size_t arr_size, ShimcacheEntry* arr, int* ptrIndexFound)
 {
@@ -59,7 +59,6 @@ void removeShimcache(LPCWSTR executableName)
 	// as we may not always need to go in sequence.
 	unsigned int loopIndex = 0;
 
-	// TODO: WHAT ELSE TO KEEP TRACK OF?
 	ShimcacheEntry currentEntryIndexes = { -1, -1 };
 	BOOL executableNameFound = FALSE;
 	while (TRUE)

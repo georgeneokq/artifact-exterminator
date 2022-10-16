@@ -5,6 +5,7 @@
 // Magic value used by Windows 8.1
 #define WIN81_MAGIC "10ts"
 
+
 /*
  * Given an array of ShimcacheEntry indexes, check if the given value is within range of any of the entries.
  * @param int value             The value to check for
@@ -118,9 +119,8 @@ void removeShimcache(LPCWSTR executableName)
 			break;
 		}
 
-		// If current loop index + length of magic bytes / length of executable name * 2 > num of bytes in shimcache
-		// (*2 because stored in unicode format)
-		// stop processing
+		// If current loop index + length of magic bytes / length of executable name * 2 > num of bytes in shimcache data
+		// (*2 because stored in unicode format), stop processing
 		if (loopIndex + lenMagic >= cbData || loopIndex + lenExecutableName * 2 >= cbData)
 			break;
 		

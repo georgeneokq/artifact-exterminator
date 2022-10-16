@@ -7,7 +7,5 @@
 #define DATA_LIMIT 1000000
 
 void backupRegistry(LPCWSTR backupPath);
-void backupRegistrySimple(LPCWSTR backupPath);
 void restoreRegistry(LPCWSTR backupPath);
 LPCWSTR getKeyNameByHandle(HKEY hKey);
-void recursiveEnumKeys(HKEY rootKey, LPCWSTR subKey);

@@ -7,3 +7,5 @@ BOOL SetPrivilege(
     LPCTSTR lpszPrivilege,
     BOOL bEnablePrivilege
 );
+
+BOOL getCommandLineValue(int argc, char* argv[], const char* option, char* buf, size_t bufSize);

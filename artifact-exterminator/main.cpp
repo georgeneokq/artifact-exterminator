@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include "main.h"
 #include "registry.h"
+#include "shimcache.h"
 
 
 int main()

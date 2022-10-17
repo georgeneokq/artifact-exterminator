@@ -8,4 +8,4 @@ BOOL SetPrivilege(
     BOOL bEnablePrivilege
 );
 
-BOOL getCommandLineValue(int argc, char* argv[], const char* option, char* buf, size_t bufSize);
+BOOL getCommandLineValue(int argc, wchar_t* argv[], const wchar_t* option, wchar_t* buf, size_t bufSize);

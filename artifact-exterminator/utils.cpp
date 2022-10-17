@@ -12,15 +12,15 @@
  * 
  * @return BOOL  Returns false if specified option was not found in argument array
 */
-BOOL getCommandLineValue(int argc, char* argv[], const char* option, char* buf, size_t bufSize)
+BOOL getCommandLineValue(int argc, wchar_t* argv[], const wchar_t* option, wchar_t* buf, size_t bufSize)
 {
     for (int i = 0; i < argc - 1; i++)
     {
-        char* arg = argv[i];
+        wchar_t* arg = argv[i];
         // If the option has been found, get the value, which is the next item in the argument array
-        if (strcmp(arg, option) == 0)
+        if (wcscmp(arg, option) == 0)
         {
-            strncpy_s(buf, bufSize, argv[i + 1], bufSize - 1);
+            wcsncpy_s(buf, bufSize, argv[i + 1], bufSize - 1);
             return TRUE;
         }
     }

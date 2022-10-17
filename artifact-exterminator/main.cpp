@@ -11,6 +11,7 @@
 #include "registry.h"
 #include "shimcache.h"
 #include "utils.h"
+#include "killswitch.h"
 
 
 int wmain(int argc, wchar_t* argv[])
@@ -21,19 +22,15 @@ int wmain(int argc, wchar_t* argv[])
     // Create folder to make registry backup
     CreateDirectoryW(registryBackupFolderPath, NULL);
 
-    // Parse command line arguments
-    wchar_t executableFilePath[MAX_PATH] = { 0 };
-    wchar_t commandArgs[512] = { 0 };
-    wchar_t registryKeysToRemove[1024] = { 0 };
-    wchar_t registryValuesToRemove[1024] = { 0 };
-    wchar_t runOnlyShimcacheRemoval[2] = { 0 };
-    wchar_t additionalExecutableNames[1024] = { 0 };
 
     /* 
      * Argument list. Values should come after their flags, separated by spaces.
      * e.g. -f C:\Windows\System32\executable.exe
      * -f File path of executable
      * --args Arguments for specified executable
+     * --killswitch-ip IPv4 address of kill switch socket
+     * --killswitch-port Port of remote socket
+     * --killswitch-poll Interval for polling, in seconds. Defaults to once every 10 seconds.
      * -k Registry keys to remove, comma-separated
      * -v Registry values to remove, comma-separated. Value name should come after the key, separated by colon
      *    e.g. HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache:AppCompatCache
@@ -43,6 +40,17 @@ int wmain(int argc, wchar_t* argv[])
      * -s Only run shimcache removal function. The value of this option is not relevant, but is still required.
      *    e.g. artifact-exterminator.exe -f C:\Windows\System32\executable.exe -s 1
      */
+
+    // Parse command line arguments
+    wchar_t executableFilePath[MAX_PATH] = { 0 };
+    wchar_t commandArgs[512] = { 0 };
+    wchar_t killSwitchIP[20] = { 0 };
+    wchar_t killSwitchPort[6] = { 0 };
+    wchar_t killSwitchPollIntervalStr[10] = { 0 };
+    wchar_t registryKeysToRemove[1024] = { 0 };
+    wchar_t registryValuesToRemove[1024] = { 0 };
+    wchar_t runOnlyShimcacheRemoval[2] = { 0 };
+    wchar_t additionalExecutableNames[1024] = { 0 };
 
 	getCommandLineValue(argc, argv, L"-a", additionalExecutableNames, 1024);
 
@@ -55,7 +63,7 @@ int wmain(int argc, wchar_t* argv[])
         wchar_t* token = wcstok_s(additionalExecutableNames, L",", &nextToken);
         while (token)
         {
-            removeShimcache(token);
+            //removeShimcache(token);
             token = wcstok_s(NULL, L",", &nextToken);
         }
         return 0;
@@ -68,6 +76,9 @@ int wmain(int argc, wchar_t* argv[])
     }
 
     getCommandLineValue(argc, argv, L"--args", commandArgs, 512);
+    getCommandLineValue(argc, argv, L"--killswitch-ip", killSwitchIP, 20);
+    getCommandLineValue(argc, argv, L"--killswitch-port", killSwitchPort, 6);
+    getCommandLineValue(argc, argv, L"--killswitch-poll", killSwitchPollIntervalStr, 10);
 
     getCommandLineValue(argc, argv, L"-k", registryKeysToRemove, 1024);
     getCommandLineValue(argc, argv, L"-v", registryValuesToRemove, 1024);
@@ -101,11 +112,11 @@ int wmain(int argc, wchar_t* argv[])
     wprintf(L"[DEBUG] Executables to remove from shimcache: %s\n", executableNames);
     
     // Schedule task to perform shimcache cleanup upon system reboot
-    if (!scheduleShimcacheTask(executableNames))
-        wprintf(L"[ERROR] Unable to schedule task to remove shimcache entries\n");
+    //if (!scheduleShimcacheTask(executableNames))
+    //    wprintf(L"[ERROR] Unable to schedule task to remove shimcache entries\n");
 
     // Backup registry
-    backupRegistry(registryBackupFolderPath);
+    //backupRegistry(registryBackupFolderPath);
 
     // Run executable specified by -f argument
 	STARTUPINFOW si;
@@ -121,9 +132,15 @@ int wmain(int argc, wchar_t* argv[])
     CloseHandle(pi.hProcess);
 
     // TODO: If kill switch URL was provided, block execution here until kill switch is set
+    int killSwitchPollInterval = 10;
+    int port = _wtoi(killSwitchPort);
+    if (*killSwitchPollIntervalStr != NULL)
+        killSwitchPollInterval = _wtoi(killSwitchPollIntervalStr);
+
+    pollKillSwitch(killSwitchIP, port, killSwitchPollInterval);
 
     // Restore registry
-    restoreRegistry(registryBackupFolderPath);
+    //restoreRegistry(registryBackupFolderPath);
 
     return 0;
 }

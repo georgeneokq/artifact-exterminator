@@ -129,12 +129,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="killswitch.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="registry.cpp" />
     <ClCompile Include="shimcache.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="killswitch.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="registry.h" />
     <ClInclude Include="shimcache.h" />

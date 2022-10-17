@@ -23,6 +23,7 @@ int wmain(int argc, wchar_t* argv[])
 
     // Parse command line arguments
     wchar_t executableFilePath[MAX_PATH] = { 0 };
+    wchar_t commandArgs[512] = { 0 };
     wchar_t registryKeysToRemove[1024] = { 0 };
     wchar_t registryValuesToRemove[1024] = { 0 };
     wchar_t runOnlyShimcacheRemoval[2] = { 0 };
@@ -32,6 +33,7 @@ int wmain(int argc, wchar_t* argv[])
      * Argument list. Values should come after their flags, separated by spaces.
      * e.g. -f C:\Windows\System32\executable.exe
      * -f File path of executable
+     * --args Arguments for specified executable
      * -k Registry keys to remove, comma-separated
      * -v Registry values to remove, comma-separated. Value name should come after the key, separated by colon
      *    e.g. HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache:AppCompatCache
@@ -65,15 +67,18 @@ int wmain(int argc, wchar_t* argv[])
         return 1;
     }
 
+    getCommandLineValue(argc, argv, L"--args", commandArgs, 512);
+
     getCommandLineValue(argc, argv, L"-k", registryKeysToRemove, 1024);
     getCommandLineValue(argc, argv, L"-v", registryValuesToRemove, 1024);
 
-    wprintf(L"[DEBUG]\n-f: %s\n-k: %s\n-v: %s\n-s: %s\n-a: %s\n",
+    wprintf(L"[DEBUG]\n-f: %s\n-k: %s\n-v: %s\n-s: %s\n-a: %s\n--args: %s\n",
         executableFilePath,
         registryKeysToRemove,
         registryValuesToRemove,
         runOnlyShimcacheRemoval,
-        additionalExecutableNames);
+        additionalExecutableNames,
+        commandArgs);
 
     // Extract executable name from -f parameter
 	wchar_t* executableFileName = wcsrchr(executableFilePath, L'\\');
@@ -95,15 +100,30 @@ int wmain(int argc, wchar_t* argv[])
     }
     wprintf(L"[DEBUG] Executables to remove from shimcache: %s\n", executableNames);
     
-    // TODO: Schedule task to perform shimcache cleanup upon system reboot
+    // Schedule task to perform shimcache cleanup upon system reboot
     if (!scheduleShimcacheTask(executableNames))
         wprintf(L"[ERROR] Unable to schedule task to remove shimcache entries\n");
 
-    // TODO: Backup registry
+    // Backup registry
+    backupRegistry(registryBackupFolderPath);
 
-    // TODO: Run executable specified by -f argument
+    // Run executable specified by -f argument
+	STARTUPINFOW si;
+	ZeroMemory(&si, sizeof(si));
+	si.cb = sizeof(si);
+	PROCESS_INFORMATION pi;
+	ZeroMemory(&pi, sizeof(pi));
+    wchar_t command[512 + MAX_PATH];
+    wsprintf(command, L"/c %s %s", executableFilePath, commandArgs);
+    CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", command, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
 
-    // TODO: Restore registry
+    // TODO: If kill switch URL was provided, block execution here until kill switch is set
+
+    // Restore registry
+    restoreRegistry(registryBackupFolderPath);
 
     return 0;
 }
@@ -113,6 +133,15 @@ int wmain(int argc, wchar_t* argv[])
  * 
  * @param char* executableNames  Comma-separated list of executable names, as passed in by -a parameter
  * @return BOOL  If successfully created task, return TRUE
+	STARTUPINFOW si;
+	ZeroMemory(&si, sizeof(si));
+	si.cb = sizeof(si);
+	PROCESS_INFORMATION pi;
+	ZeroMemory(&pi, sizeof(pi));
+    CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", command, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
+    WaitForSingleObject(pi.hProcess, 10000);
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
  */
 BOOL scheduleShimcacheTask(wchar_t* executableNames)
 {

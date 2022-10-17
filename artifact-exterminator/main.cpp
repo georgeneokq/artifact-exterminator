@@ -27,8 +27,6 @@ int wmain(int argc, wchar_t* argv[])
     wchar_t registryValuesToRemove[1024] = { 0 };
     wchar_t runOnlyShimcacheRemoval[2] = { 0 };
     wchar_t additionalExecutableNames[1024] = { 0 };
-    wchar_t adminUsername[50] = { 0 };
-    wchar_t adminPassword[100] = { 0 };
 
     /* 
      * Argument list. Values should come after their flags, separated by spaces.
@@ -44,15 +42,21 @@ int wmain(int argc, wchar_t* argv[])
      *    e.g. artifact-exterminator.exe -f C:\Windows\System32\executable.exe -s 1
      */
 
-    getCommandLineValue(argc, argv, L"-u", adminUsername, 50);
-    getCommandLineValue(argc, argv, L"-p", adminPassword, 100);
-    
 	getCommandLineValue(argc, argv, L"-a", additionalExecutableNames, 1024);
 
     // Run only the shimcache removal function.
     if (getCommandLineValue(argc, argv, L"-s", runOnlyShimcacheRemoval, 2))
     {
-	    // TODO: Perform shimcache cleanup and quit the program
+        // Split additionalExecutableNames by comma.
+        // For each executable name, remove shimcache record.
+        wchar_t* nextToken;
+        wchar_t* token = wcstok_s(additionalExecutableNames, L",", &nextToken);
+        while (token)
+        {
+            removeShimcache(token);
+            token = wcstok_s(NULL, L",", &nextToken);
+        }
+        return 0;
     }
 
     if (!getCommandLineValue(argc, argv, L"-f", executableFilePath, MAX_PATH))

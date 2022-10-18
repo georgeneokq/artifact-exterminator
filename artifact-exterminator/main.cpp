@@ -63,7 +63,7 @@ int wmain(int argc, wchar_t* argv[])
         wchar_t* token = wcstok_s(additionalExecutableNames, L",", &nextToken);
         while (token)
         {
-            //removeShimcache(token);
+            removeShimcache(token);
             token = wcstok_s(NULL, L",", &nextToken);
         }
         return 0;

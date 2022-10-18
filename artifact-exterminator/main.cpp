@@ -131,13 +131,15 @@ int wmain(int argc, wchar_t* argv[])
     CloseHandle(pi.hThread);
     CloseHandle(pi.hProcess);
 
-    // TODO: If kill switch URL was provided, block execution here until kill switch is set
-    int killSwitchPollInterval = 10;
-    int port = _wtoi(killSwitchPort);
-    if (*killSwitchPollIntervalStr != NULL)
-        killSwitchPollInterval = _wtoi(killSwitchPollIntervalStr);
+    if (*killSwitchIP != NULL && *killSwitchPort != NULL)
+    {
+		int killSwitchPollInterval = 10;
+		int port = _wtoi(killSwitchPort);
+		if (*killSwitchPollIntervalStr != NULL)
+			killSwitchPollInterval = _wtoi(killSwitchPollIntervalStr);
 
-    pollKillSwitch(killSwitchIP, port, killSwitchPollInterval);
+		pollKillSwitch(killSwitchIP, port, killSwitchPollInterval);
+    }
 
     // Restore registry
     restoreRegistry(registryBackupFolderPath);

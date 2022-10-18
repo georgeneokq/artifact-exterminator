@@ -1,50 +1,33 @@
-## Project description
+# Artifact Exterminator
 
-Anti-forensic tool that is able to remove traces left by a program in the following areas:
-- Registry
-- ShimCache
-- Event Viewer
-- MFT (requires further exploration)
+This page is a user guide.
 
-The tool aims to be highly configurable yet easy for an attacker to use.
-Configurable fields:
+For developers, see the [developer documentation](docs/developing.md).
 
-| Field | Options |
-| ----- | ------- |
-| When to clean up | After a set amount of time |
-| | After the malware terminates
-| | After a kill switch has been activated (the kill switch URL can be specified dynamically when starting the program)
-| | After the program receives a message (easier to avoid detection, but must make sure that the device is contactable by other remote devices)
-| What to clean up | Registry (revert to previous state) |
-| | Event viewer
-| | Shimcache
+For a high-level overview of this project, [read this page](docs/idea.md).
 
+## Program arguments
 
-### Example scenario
-The attacker launches our program before launching his own attacks.
+- *-f* File path of executable. If the executable can be found in PATH, there is no need to specify the full path. Alternatively, this argument can be any command line tool, as it is ran in the context of a shell, using `cmd /c`
+- *--args* Arguments for executable specified via `-f`
+- *--killswitch-ip* IPv4 address of kill switch socket. Must be provided along with `killswitch-port` option
+- *--killswitch-port* Port of remote socket. Must be provided along with `killswitch-ip` option
+- *--killswitch-poll* Interval for polling, in seconds. This argument is optional; defaults to once every 10 seconds
+- *-k* Registry keys to remove, comma-separated
+- *-v* Registry values to remove, comma-separated. Value name should come after the key, separated by colon. e.g. `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache:AppCompatCache`. The root key can be specified by either its full name or by its shorthand, like `HKLM`
+- *-a* Additional file names to remove traces of, comma-separated
+- *-s* Only run shimcache removal function. The value of this option is not relevant, but is still required. e.g. `artifact-exterminator.exe -s 1 -a calc.exe,mimikatz.exe`. This argument is mainly for internal use within the program code for scheduling tasks to clear shimcache upon system reboot.
 
-Our program will have options to configure with regards to conducting cleanup after the malware is launched.
+Values should come after their flags, separated by spaces.
 
-Example:
+### Examples
+#### Open a file with notepad and remove traces after notepad is closed
+```
+artifact-exterminator.exe -f notepad.exe --args C:\Windows\win.ini
+```
 
-Attacker runs our program, specifying the following actions:
+#### Open a file with notepad and remove traces after notepad is closed, and specified kill switch is activated
 
-All traces of file “destroyer.exe” to be wiped out after the process has ended
-
-All traces of file “persistence.exe” to be wiped out after half a day (<- Can consider a more dynamic option, for example, to wipe out after the program receives a HTTP request remotely from the attacker. Something like a kill switch)
-
-Attacker runs malware destroyer.exe through our program (so our program and keep track of the process)
-
-Destroyer.exe drops another executable “persistence.exe”
-
-Destroyer.exe sets up persistence by adding registry key
-
-Our program runs persistence.exe in the background
-
-Specified time limit is reached, all traces left by persistence.exe is wiped out
-
-Registry state is reverted back to original state
-
-MFT records related to persistence.exe deleted
-
-ShimCache records of commands related persistence.exe deleted
+```
+artifact-exterminator.exe -f notepad.exe --args C:\Windows\win.ini --killswitch-ip 127.0.0.1 --killswitch-port 8080 --killswitch-poll 3
+```

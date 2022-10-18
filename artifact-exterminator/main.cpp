@@ -52,7 +52,7 @@ int wmain(int argc, wchar_t* argv[])
     wchar_t runOnlyShimcacheRemoval[2] = { 0 };
     wchar_t additionalExecutableNames[1024] = { 0 };
 
-	getCommandLineValue(argc, argv, L"-a", additionalExecutableNames, 1024);
+    getCommandLineValue(argc, argv, L"-a", additionalExecutableNames, 1024);
 
     // Run only the shimcache removal function.
     if (getCommandLineValue(argc, argv, L"-s", runOnlyShimcacheRemoval, 2))

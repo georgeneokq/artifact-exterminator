@@ -40,10 +40,10 @@ void pollKillSwitch(wchar_t* wstrSocketIP, int port, int pollInterval)
     // Connect to server. Keep trying until connected.
     do
     {
-		iResult = connect(ConnectSocket, (SOCKADDR *) &clientService, sizeof (clientService));
-		if (iResult == SOCKET_ERROR) {
-			wprintf(L"connect function failed with error: %ld\n", WSAGetLastError());
-		}
+        iResult = connect(ConnectSocket, (SOCKADDR *) &clientService, sizeof (clientService));
+        if (iResult == SOCKET_ERROR) {
+            wprintf(L"connect function failed with error: %ld\n", WSAGetLastError());
+        }
         Sleep(pollInterval * 1000);
 
     } while (iResult != 0);
@@ -63,20 +63,20 @@ void pollKillSwitch(wchar_t* wstrSocketIP, int port, int pollInterval)
         {
             printf("Connection closed, retrying connection.\n");
 
-		    // Create new socket instance
+            // Create new socket instance
             closesocket(ConnectSocket);
-		    ConnectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	        if (ConnectSocket == INVALID_SOCKET) {
+            ConnectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+            if (ConnectSocket == INVALID_SOCKET) {
                 // Shouldn't happen
-				wprintf(L"socket function failed with error: %ld\n", WSAGetLastError());
-			}
+                wprintf(L"socket function failed with error: %ld\n", WSAGetLastError());
+            }
             // Retry connection
-			iResult = connect(ConnectSocket, (SOCKADDR *) &clientService, sizeof (clientService));
-			if (iResult == SOCKET_ERROR) {
-				wprintf(L"connect function failed with error: %ld\n", WSAGetLastError());
-				Sleep(pollInterval * 1000);
-			}
-			continue;
+            iResult = connect(ConnectSocket, (SOCKADDR *) &clientService, sizeof (clientService));
+            if (iResult == SOCKET_ERROR) {
+                wprintf(L"connect function failed with error: %ld\n", WSAGetLastError());
+                Sleep(pollInterval * 1000);
+            }
+            continue;
         }
         recvBuf[1] = '\0';
         printf("Received: %s\n", recvBuf);

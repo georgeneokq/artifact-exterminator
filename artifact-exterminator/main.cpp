@@ -92,7 +92,7 @@ int wmain(int argc, wchar_t* argv[])
         commandArgs);
 
     // Extract executable name from -f parameter
-	wchar_t* executableFileName = wcsrchr(executableFilePath, L'\\');
+    wchar_t* executableFileName = wcsrchr(executableFilePath, L'\\');
     if (executableFileName == NULL)
         executableFileName = executableFilePath;
     else
@@ -112,18 +112,18 @@ int wmain(int argc, wchar_t* argv[])
     wprintf(L"[DEBUG] Executables to remove from shimcache: %s\n", executableNames);
     
     // Schedule task to perform shimcache cleanup upon system reboot
-    //if (!scheduleShimcacheTask(executableNames))
-    //    wprintf(L"[ERROR] Unable to schedule task to remove shimcache entries\n");
+    if (!scheduleShimcacheTask(executableNames))
+        wprintf(L"[ERROR] Unable to schedule task to remove shimcache entries\n");
 
     // Backup registry
-    //backupRegistry(registryBackupFolderPath);
+    backupRegistry(registryBackupFolderPath);
 
     // Run executable specified by -f argument
-	STARTUPINFOW si;
-	ZeroMemory(&si, sizeof(si));
-	si.cb = sizeof(si);
-	PROCESS_INFORMATION pi;
-	ZeroMemory(&pi, sizeof(pi));
+    STARTUPINFOW si;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&pi, sizeof(pi));
     wchar_t command[512 + MAX_PATH];
     wsprintf(command, L"/c %s %s", executableFilePath, commandArgs);
     CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", command, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
@@ -140,7 +140,7 @@ int wmain(int argc, wchar_t* argv[])
     pollKillSwitch(killSwitchIP, port, killSwitchPollInterval);
 
     // Restore registry
-    //restoreRegistry(registryBackupFolderPath);
+    restoreRegistry(registryBackupFolderPath);
 
     return 0;
 }
@@ -150,11 +150,11 @@ int wmain(int argc, wchar_t* argv[])
  * 
  * @param char* executableNames  Comma-separated list of executable names, as passed in by -a parameter
  * @return BOOL  If successfully created task, return TRUE
-	STARTUPINFOW si;
-	ZeroMemory(&si, sizeof(si));
-	si.cb = sizeof(si);
-	PROCESS_INFORMATION pi;
-	ZeroMemory(&pi, sizeof(pi));
+    STARTUPINFOW si;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&pi, sizeof(pi));
     CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", command, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
     WaitForSingleObject(pi.hProcess, 10000);
     CloseHandle(pi.hThread);
@@ -172,11 +172,11 @@ BOOL scheduleShimcacheTask(wchar_t* executableNames)
     _snwprintf_s(command, 512, L"/c SCHTASKS /Create /F /RU SYSTEM /SC ONSTART /TN %s /TR \"%s -s 1 -a %s\"", taskName, filePath, executableNames);
     wprintf(L"[DEBUG] Task creation command:\n%s\n", command);
 
-	STARTUPINFOW si;
-	ZeroMemory(&si, sizeof(si));
-	si.cb = sizeof(si);
-	PROCESS_INFORMATION pi;
-	ZeroMemory(&pi, sizeof(pi));
+    STARTUPINFOW si;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&pi, sizeof(pi));
     CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", command, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
     WaitForSingleObject(pi.hProcess, 10000);
     CloseHandle(pi.hThread);

@@ -51,15 +51,36 @@ void pollKillSwitch(wchar_t* wstrSocketIP, int port, int pollInterval)
     wprintf(L"Connected to server.\n");
 
     // Keep receiving data until the server socket sends "1"
-    // TODO: Find a way to find out when connection is severed, and re-establish the connection
-    char recvBuf[1024] = "0";
+    char recvBuf[2] = "0";
     do
     {
-        Sleep(500);
-        printf("Waiting for data from socket\n");
+        recvBuf[0] = '\0';
+        printf("Waiting for data from socket.\n");
         iResult = recv(ConnectSocket, recvBuf, 1, NULL);
+
+        // Auto-reconnect in case kill switch socket closes
+        if (iResult <= 0)
+        {
+            printf("Connection closed, retrying connection.\n");
+
+		    // Create new socket instance
+            closesocket(ConnectSocket);
+		    ConnectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	        if (ConnectSocket == INVALID_SOCKET) {
+                // Shouldn't happen
+				wprintf(L"socket function failed with error: %ld\n", WSAGetLastError());
+			}
+            // Retry connection
+			iResult = connect(ConnectSocket, (SOCKADDR *) &clientService, sizeof (clientService));
+			if (iResult == SOCKET_ERROR) {
+				wprintf(L"connect function failed with error: %ld\n", WSAGetLastError());
+				Sleep(pollInterval * 1000);
+			}
+			continue;
+        }
         recvBuf[1] = '\0';
         printf("Received: %s\n", recvBuf);
+
     } while (recvBuf[0] != '1');
 
     iResult = closesocket(ConnectSocket);

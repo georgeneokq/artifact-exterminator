@@ -2,7 +2,9 @@
  * This program should be ran with administrative privileges.
  * Credentials should also be provided through command line parameters -u and -p,
  * for the shimcache removal function to work.
- * At the moment, none of the functionalities will work without administrative privileges.
+ * 
+ * Functionality will be limited without administrative privileges.
+ * For example, registry backup and restoration will not work for HKLM hive.
  */
 
 #include <iostream>
@@ -31,11 +33,13 @@ int wmain(int argc, wchar_t* argv[])
      * --killswitch-ip IPv4 address of kill switch socket
      * --killswitch-port Port of remote socket
      * --killswitch-poll Interval for polling, in seconds. Defaults to once every 10 seconds.
-     * -k Registry keys to remove, comma-separated
-     * -v Registry values to remove, comma-separated. Value name should come after the key, separated by colon
-     *    e.g. HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache:AppCompatCache
+     * -k Registry keys to remove, comma-separated.
+     *    If any part of the argument contains a space, it should be wrapped in quotes.
      *    The root key can be specified by either its full name or by its shorthand
      *    i.e. HKEY_LOCAL_MACHINE HKLM
+     * -v Registry values to remove, comma-separated. Value name should come after the key, separated by a colon.
+          If any part of the argument contains a space, it should be wrapped in quotes.
+     *    e.g. HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache\AppCompatCache
      * -a Additional file paths to clean up
      * -s Only run shimcache removal function. The value of this option is not relevant, but is still required.
      *    e.g. artifact-exterminator.exe -f C:\Windows\System32\executable.exe -s 1
@@ -47,8 +51,8 @@ int wmain(int argc, wchar_t* argv[])
     wchar_t killSwitchIP[20] = { 0 };
     wchar_t killSwitchPort[6] = { 0 };
     wchar_t killSwitchPollIntervalStr[10] = { 0 };
-    wchar_t registryKeysToRemove[1024] = { 0 };
-    wchar_t registryValuesToRemove[1024] = { 0 };
+    wchar_t registryKeysToRemoveStr[1024] = { 0 };
+    wchar_t registryValuesToRemoveStr[1024] = { 0 };
     wchar_t runOnlyShimcacheRemoval[2] = { 0 };
     wchar_t additionalExecutableNames[1024] = { 0 };
 
@@ -75,21 +79,68 @@ int wmain(int argc, wchar_t* argv[])
         return 1;
     }
 
+    // Program args
     getCommandLineValue(argc, argv, L"--args", commandArgs, 512);
+
+    // Kill switch args
     getCommandLineValue(argc, argv, L"--killswitch-ip", killSwitchIP, 20);
     getCommandLineValue(argc, argv, L"--killswitch-port", killSwitchPort, 6);
     getCommandLineValue(argc, argv, L"--killswitch-poll", killSwitchPollIntervalStr, 10);
 
-    getCommandLineValue(argc, argv, L"-k", registryKeysToRemove, 1024);
-    getCommandLineValue(argc, argv, L"-v", registryValuesToRemove, 1024);
+    // Registry deletion args
+    getCommandLineValue(argc, argv, L"-k", registryKeysToRemoveStr, 1024);
+    getCommandLineValue(argc, argv, L"-v", registryValuesToRemoveStr, 1024);
 
     wprintf(L"[DEBUG]\n-f: %s\n-k: %s\n-v: %s\n-s: %s\n-a: %s\n--args: %s\n",
         executableFilePath,
-        registryKeysToRemove,
-        registryValuesToRemove,
+        registryKeysToRemoveStr,
+        registryValuesToRemoveStr,
         runOnlyShimcacheRemoval,
         additionalExecutableNames,
         commandArgs);
+
+    // Convert registry deletion args from comma-separated values to actual array
+    wchar_t* registryKeysToRemove[50];
+    int numKeys = 0;
+    RegValue registryValuesToRemove[50];
+    int numValues = 0;
+
+    // Convert -k argument to array of strings
+    if (*registryKeysToRemoveStr != NULL)
+    {
+        wchar_t* nextToken;
+        wchar_t* token = wcstok_s(registryKeysToRemoveStr, L",", &nextToken);
+        while (token)
+        {
+            size_t tokenLen = wcslen(token);
+            registryKeysToRemove[numKeys] = (wchar_t*)malloc(sizeof(wchar_t) * (tokenLen + 1));
+            wcsncpy_s(registryKeysToRemove[numKeys], tokenLen + 1, token, tokenLen);
+            numKeys++;
+            token = wcstok_s(NULL, L",", &nextToken);
+        }
+    }
+
+    // Convert -v argument to array of RegValue structs
+    if (*registryValuesToRemoveStr != NULL)
+    {
+        wchar_t* nextToken;
+        wchar_t* token = wcstok_s(registryValuesToRemoveStr, L",", &nextToken);
+        while (token)
+        {
+            // Key and value comes in pairs, separted by character specified in registry.h
+            wchar_t* separatorPtr = wcsrchr(token, KEY_VALUE_SEPARATOR);
+            int separatorPos = separatorPtr - token;
+            wchar_t* key = (wchar_t*)malloc(sizeof(wchar_t) * (separatorPos + 1));
+            wcsncpy_s(key, separatorPos + 1, token, separatorPos);
+            key[separatorPos] = '\0';
+            wchar_t* value = separatorPtr + 1;
+
+            RegValue regValue = { key, value };
+            registryValuesToRemove[numValues] = regValue;
+            numValues++;
+            token = wcstok_s(NULL, L",", &nextToken);
+        }
+    }
 
     // Extract executable name from -f parameter
     wchar_t* executableFileName = wcsrchr(executableFilePath, L'\\');
@@ -111,14 +162,14 @@ int wmain(int argc, wchar_t* argv[])
     }
     wprintf(L"[DEBUG] Executables to remove from shimcache: %s\n", executableNames);
     
-    // Schedule task to perform shimcache cleanup upon system reboot
+    // FEAT: Schedule task to perform shimcache cleanup upon system reboot
     if (!scheduleShimcacheTask(executableNames))
         wprintf(L"[ERROR] Unable to schedule task to remove shimcache entries\n");
 
-    // Backup registry
+    // FEAT: Backup registry
     backupRegistry(registryBackupFolderPath);
 
-    // Run executable specified by -f argument
+    // FEAT: Run executable specified by -f argument
     STARTUPINFOW si;
     ZeroMemory(&si, sizeof(si));
     si.cb = sizeof(si);
@@ -141,8 +192,23 @@ int wmain(int argc, wchar_t* argv[])
 		pollKillSwitch(killSwitchIP, port, killSwitchPollInterval);
     }
 
-    // Restore registry
+    // FEAT: Restore registry
     restoreRegistry(registryBackupFolderPath);
+
+    // FEAT: Delete specified registry keys and values
+    wprintf(L"Deleting registry values...\n");
+    deleteRegistryValues(numValues, registryValuesToRemove);
+
+    wprintf(L"Deleting registry keys...\n");
+    deleteRegistryKeys(numKeys, registryKeysToRemove);
+
+    // Cleanup: Free pointers
+    for (int i = 0; i < numKeys; i++)
+        free(registryKeysToRemove[i]);
+    
+    // Only keyName is created using malloc
+    for (int i = 0; i < numValues; i++)
+        free(registryValuesToRemove[i].keyName);
 
     return 0;
 }

@@ -14,37 +14,50 @@
 
 LPCWSTR getKeyNameByHandle(HKEY hKey)
 {
-    if (hKey == HKEY_LOCAL_MACHINE) {
+    if (hKey == HKEY_LOCAL_MACHINE)
         return L"HKEY_LOCAL_MACHINE";
-    }
-    else if (hKey == HKEY_CURRENT_USER) {
+    else if (hKey == HKEY_CURRENT_USER)
         return L"HKEY_CURRENT_USER";
-    }
-    else if (hKey == HKEY_USERS) {
+    else if (hKey == HKEY_USERS)
         return L"HKEY_USERS";
-    }
-    else if (hKey == HKEY_CURRENT_CONFIG) {
+    else if (hKey == HKEY_CURRENT_CONFIG)
         return L"HKEY_CURRENT_CONFIG";
-    }
-    else {
+    else if (hKey == HKEY_CLASSES_ROOT)
+        return L"HKEY_CLASSES_ROOT";
+    else
         return L"Unknown";
-    }
 }
 
+HKEY getHandleByKeyName(wchar_t* keyName)
+{
+    if (wcscmp(keyName, L"HKEY_LOCAL_MACHINE") == 0 || wcscmp(keyName, L"HKLM") == 0)
+        return HKEY_LOCAL_MACHINE;
+    else if (wcscmp(keyName, L"HKEY_CURRENT_USER") == 0 || wcscmp(keyName, L"HKCU") == 0)
+        return HKEY_CURRENT_USER;
+    else if (wcscmp(keyName, L"HKEY_USERS") == 0 || wcscmp(keyName, L"HKU") == 0)
+        return HKEY_USERS;
+    else if (wcscmp(keyName, L"HKEY_CURRENT_CONFIG") == 0 || wcscmp(keyName, L"HKLM") == 0)
+        return HKEY_CURRENT_CONFIG;
+    else if (wcscmp(keyName, L"HKEY_CLASSES_ROOT") == 0 || wcscmp(keyName, L"HKCR") == 0)
+        return HKEY_CLASSES_ROOT;
+    else
+        return NULL;
+}
 
 void backupRegistry(LPCWSTR backupPath)
 {
-    const DWORD cRootKeys = 4;
+    const DWORD cRootKeys = 5;
     HKEY rootHKeys[cRootKeys] = {
         HKEY_CURRENT_CONFIG,
         HKEY_CURRENT_USER,
         HKEY_LOCAL_MACHINE,
-        HKEY_USERS
+        HKEY_USERS,
+        HKEY_CLASSES_ROOT
     };
     PROCESS_INFORMATION processInfos[cRootKeys];
     HANDLE processHandles[cRootKeys];
     
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < cRootKeys; i++)
     {
         LPCWSTR keyName = getKeyNameByHandle(rootHKeys[i]);
         
@@ -123,5 +136,59 @@ void restoreRegistry(LPCWSTR backupPath)
     {
         CloseHandle(processInfos[i].hThread);
         CloseHandle(processInfos[i].hProcess);
+    }
+}
+
+void deleteRegistryKeys(int numKeys, wchar_t** keys)
+{
+    for (int i = 0; i < numKeys; i++)
+    {
+        wchar_t* key = keys[i];
+        wchar_t* rootKeyName;
+        // Extract root key from string
+        wchar_t* nextToken;
+
+        // Root key
+        wchar_t* separatorPtr = wcschr(key, L'\\');
+        int separatorPos = separatorPtr - key;
+        rootKeyName = (wchar_t*)malloc(sizeof(wchar_t) * (separatorPos + 1));
+        wcsncpy_s(rootKeyName, separatorPos + 1, key, separatorPos);
+        rootKeyName[separatorPos] = '\0';
+
+        // Subkey
+        wchar_t* subkey = separatorPtr + 1;
+
+        wprintf(L"[DEBUG] Root key: %s, Subkey: %s\n", rootKeyName, subkey);
+
+        RegDeleteKeyW(getHandleByKeyName(rootKeyName), subkey);
+
+        free(rootKeyName);
+    }
+}
+
+void deleteRegistryValues(int numValues, RegValue* values)
+{
+    for (int i = 0; i < numValues; i++)
+    {
+        RegValue regValue = values[i];
+        wchar_t* rootKeyName;
+        // Extract root key from string
+        wchar_t* nextToken;
+
+        // Root key
+        wchar_t* separatorPtr = wcschr(regValue.keyName, L'\\');
+        int separatorPos = separatorPtr - regValue.keyName;
+        rootKeyName = (wchar_t*)malloc(sizeof(wchar_t) * (separatorPos + 1));
+        wcsncpy_s(rootKeyName, separatorPos + 1, regValue.keyName, separatorPos);
+        rootKeyName[separatorPos] = '\0';
+
+        // Subkey
+        wchar_t* subkey = separatorPtr + 1;
+
+        wprintf(L"[DEBUG] Root key: %s, Subkey: %s, Value: %s\n", rootKeyName, subkey, regValue.valueName);
+
+        RegDeleteKeyValueW(getHandleByKeyName(rootKeyName), subkey, regValue.valueName);
+
+        free(rootKeyName);
     }
 }

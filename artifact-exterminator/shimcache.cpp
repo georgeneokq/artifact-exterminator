@@ -172,9 +172,21 @@ void removeShimcache(LPCWSTR executableName)
 		loopIndex++;
 	}
 
-	// Set the new buffer as the new data for AppCompatCache value
+	RegCloseKey(hKey);
+
+	// Write to AppCompatCache located in ControlSet001 and ControlSet002 (if it exists). CurrentControlSet is a symlink.
+	// In most cases, CurrentControlSet is a symlink to ControlSet001, but rarely also ControlSet002.
+	RegOpenKeyW(HKEY_LOCAL_MACHINE, L"SYSTEM\\ControlSet001\\Control\\Session Manager\\AppCompatCache", &hKey);
 	RegSetKeyValueW(hKey, NULL, L"AppCompatCache", REG_BINARY, copyBuf, bytesCopied);
 	RegCloseKey(hKey);
+	
+	RegOpenKeyW(HKEY_LOCAL_MACHINE, L"SYSTEM\\ControlSet002\\Control\\Session Manager\\AppCompatCache", &hKey);
+	// Important check: Without this, system will constantly get BSOD upon reboot
+	if (hKey != NULL)
+	{
+        RegSetKeyValueW(hKey, NULL, L"AppCompatCache", REG_BINARY, copyBuf, bytesCopied);
+        RegCloseKey(hKey);
+	}
 
 	free(copyBuf);
 	free(shimcacheData);

@@ -18,6 +18,10 @@
 
 int wmain(int argc, wchar_t* argv[])
 {
+    // Print a warning message if administrator privileges not detected.
+    if (!IsElevated())
+        wprintf(L"[WARNING] Administrator privileges not detected, running with limited functionality.\n");
+
     WCHAR registryBackupFolderPath[MAX_PATH] = { 0 };
     getRegistryBackupFolderPath(MAX_PATH, registryBackupFolderPath);
 
@@ -86,6 +90,12 @@ int wmain(int argc, wchar_t* argv[])
     getCommandLineValue(argc, argv, L"--killswitch-ip", killSwitchIP, 20);
     getCommandLineValue(argc, argv, L"--killswitch-port", killSwitchPort, 6);
     getCommandLineValue(argc, argv, L"--killswitch-poll", killSwitchPollIntervalStr, 10);
+
+    // XOR, if one is given but the other isn't
+    if (!(*killSwitchIP != NULL) != !(*killSwitchPort != NULL))
+    {
+        wprintf(L"[WARNING] Either --killswitch-ip or --killswitch-port was provided, but the other was not. Kill switch polling not activated.\n");
+    }
 
     // Registry deletion args
     getCommandLineValue(argc, argv, L"-k", registryKeysToRemoveStr, 1024);

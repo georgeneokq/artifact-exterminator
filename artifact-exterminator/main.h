@@ -3,4 +3,4 @@
 #define REGISTRY_BACKUP_FOLDER_NAME L"regbackup"
 
 void getRegistryBackupFolderPath(DWORD nBufferLength, LPWSTR lpBuffer);
-BOOL scheduleShimcacheTask(wchar_t* executableNames);
+void scheduleShimcacheTask(wchar_t* executableNames);

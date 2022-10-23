@@ -52,6 +52,7 @@ int wmain(int argc, wchar_t* argv[])
     // Parse command line arguments
     wchar_t executableFilePath[MAX_PATH] = { 0 };
     wchar_t commandArgs[512] = { 0 };
+    wchar_t features[120] = { 0 };
     wchar_t killSwitchIP[20] = { 0 };
     wchar_t killSwitchPort[6] = { 0 };
     wchar_t killSwitchPollIntervalStr[10] = { 0 };
@@ -61,30 +62,18 @@ int wmain(int argc, wchar_t* argv[])
     wchar_t additionalExecutableNames[1024] = { 0 };
 
     getCommandLineValue(argc, argv, L"-a", additionalExecutableNames, 1024);
-
-    // Run only the shimcache removal function.
-    if (getCommandLineValue(argc, argv, L"-s", runOnlyShimcacheRemoval, 2))
-    {
-        // Split additionalExecutableNames by comma.
-        // For each executable name, remove shimcache record.
-        wchar_t* nextToken;
-        wchar_t* token = wcstok_s(additionalExecutableNames, L",", &nextToken);
-        while (token)
-        {
-            removeShimcache(token);
-            token = wcstok_s(NULL, L",", &nextToken);
-        }
-        return 0;
-    }
-
-    if (!getCommandLineValue(argc, argv, L"-f", executableFilePath, MAX_PATH))
-    {
-        printf("Argument -f is required.");
-        return 1;
-    }
-
-    // Program args
+    getCommandLineValue(argc, argv, L"-s", runOnlyShimcacheRemoval, 2);
+    getCommandLineValue(argc, argv, L"-f", executableFilePath, MAX_PATH);
     getCommandLineValue(argc, argv, L"--args", commandArgs, 512);
+
+    /*
+     * Features to enable, comma-separated.
+     * Possible options:
+     * registry
+     * shimcache
+     * event (FUTURE WORKS)
+     */
+    getCommandLineValue(argc, argv, L"--features", features, 120);
 
     // Kill switch args
     getCommandLineValue(argc, argv, L"--killswitch-ip", killSwitchIP, 20);
@@ -94,20 +83,53 @@ int wmain(int argc, wchar_t* argv[])
     // XOR, if one is given but the other isn't
     if (!(*killSwitchIP != NULL) != !(*killSwitchPort != NULL))
     {
-        wprintf(L"[WARNING] Either --killswitch-ip or --killswitch-port was provided, but the other was not. Kill switch polling not activated.\n");
+        wprintf(L"[WARNING] Either --killswitch-ip or --killswitch-port was provided, but the other was not. Kill switch polling not enabled.\n");
     }
 
     // Registry deletion args
     getCommandLineValue(argc, argv, L"-k", registryKeysToRemoveStr, 1024);
     getCommandLineValue(argc, argv, L"-v", registryValuesToRemoveStr, 1024);
 
-    wprintf(L"[DEBUG]\n-f: %s\n-k: %s\n-v: %s\n-s: %s\n-a: %s\n--args: %s\n",
+    wprintf(L"[DEBUG]\n-f: %s\n--args: %s\n--features: %s\n-k: %s\n-v: %s\n-s: %s\n-a: %s\n--killswitch-ip: %s\n--killswitch-port: %s\n--killswitch-poll: %s\n",
         executableFilePath,
+        commandArgs,
+        features,
         registryKeysToRemoveStr,
         registryValuesToRemoveStr,
         runOnlyShimcacheRemoval,
         additionalExecutableNames,
-        commandArgs);
+        killSwitchIP,
+        killSwitchPort,
+        killSwitchPollIntervalStr);
+
+    // Parse --features argument, comma-separated. All features enabled by default if argument not provided.
+    BOOL registryModuleEnabled = FALSE;
+    BOOL shimcacheModuleEnabled = FALSE;
+
+    // Enable specified features
+    if (*features != NULL)
+    {
+        wchar_t* nextToken;
+        wchar_t* token = wcstok_s(features, L",", &nextToken);
+        while (token)
+        {
+            wprintf(L"[DEBUG] Enabling module \"%s\"...\n", token);
+            if (wcscmp(token, L"registry") == 0)
+                registryModuleEnabled = TRUE;
+            else if (wcscmp(token, L"shimcache") == 0)
+                shimcacheModuleEnabled = TRUE;
+            else
+                wprintf(L"Unknown module \"%s\".\n", token);
+            token = wcstok_s(NULL, L",", &nextToken);
+        }
+    }
+    // --features argument not provided, enable all features
+    else
+    {
+        wprintf(L"[DEBUG] --features argument not provided, enabling all features.\n");
+        registryModuleEnabled = TRUE;
+        shimcacheModuleEnabled = TRUE;
+    }
 
     // Convert registry deletion args from comma-separated values to actual array
     wchar_t* registryKeysToRemove[50];
@@ -130,6 +152,7 @@ int wmain(int argc, wchar_t* argv[])
         }
     }
 
+	// FEAT: Delete specified registry keys and values
     // Convert -v argument to array of RegValue structs
     if (*registryValuesToRemoveStr != NULL)
     {
@@ -173,25 +196,30 @@ int wmain(int argc, wchar_t* argv[])
     wprintf(L"[DEBUG] Executables to remove from shimcache: %s\n", executableNames);
     
     // FEAT: Schedule task to perform shimcache cleanup upon system reboot
-    if (!scheduleShimcacheTask(executableNames))
-        wprintf(L"[ERROR] Unable to schedule task to remove shimcache entries\n");
+    if(shimcacheModuleEnabled)
+		scheduleShimcacheTask(executableNames);
 
     // FEAT: Backup registry
-    backupRegistry(registryBackupFolderPath);
+    if(registryModuleEnabled)
+		backupRegistry(registryBackupFolderPath);
 
     // FEAT: Run executable specified by -f argument
-    STARTUPINFOW si;
-    ZeroMemory(&si, sizeof(si));
-    si.cb = sizeof(si);
-    PROCESS_INFORMATION pi;
-    ZeroMemory(&pi, sizeof(pi));
-    wchar_t command[512 + MAX_PATH];
-    wsprintf(command, L"/c %s %s", executableFilePath, commandArgs);
-    CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", command, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
-    WaitForSingleObject(pi.hProcess, INFINITE);
-    CloseHandle(pi.hThread);
-    CloseHandle(pi.hProcess);
+    if (*executableFilePath != NULL)
+    {
+		STARTUPINFOW si;
+		ZeroMemory(&si, sizeof(si));
+		si.cb = sizeof(si);
+		PROCESS_INFORMATION pi;
+		ZeroMemory(&pi, sizeof(pi));
+		wchar_t command[512 + MAX_PATH];
+		wsprintf(command, L"/c %s %s", executableFilePath, commandArgs);
+		CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", command, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
+		WaitForSingleObject(pi.hProcess, INFINITE);
+		CloseHandle(pi.hThread);
+		CloseHandle(pi.hProcess);
+    }
 
+    // FEAT: Poll for kill switch before performing any cleanup
     if (*killSwitchIP != NULL && *killSwitchPort != NULL)
     {
 		int killSwitchPollInterval = 10;
@@ -202,15 +230,32 @@ int wmain(int argc, wchar_t* argv[])
 		pollKillSwitch(killSwitchIP, port, killSwitchPollInterval);
     }
 
-    // FEAT: Restore registry
-    restoreRegistry(registryBackupFolderPath);
+    // FEAT: Restore registry to previous state
+    if (registryModuleEnabled)
+    {
+		restoreRegistry(registryBackupFolderPath);
+		wprintf(L"Deleting registry values...\n");
+		deleteRegistryValues(numValues, registryValuesToRemove);
 
-    // FEAT: Delete specified registry keys and values
-    wprintf(L"Deleting registry values...\n");
-    deleteRegistryValues(numValues, registryValuesToRemove);
+		wprintf(L"Deleting registry keys...\n");
+		deleteRegistryKeys(numKeys, registryKeysToRemove);
+    }
 
-    wprintf(L"Deleting registry keys...\n");
-    deleteRegistryKeys(numKeys, registryKeysToRemove);
+    // Remove shimcache records of specified executable names
+    if (shimcacheModuleEnabled && runOnlyShimcacheRemoval)
+    {
+        // Split additionalExecutableNames by comma.
+        // For each executable name, remove shimcache record.
+        wchar_t* nextToken;
+        wchar_t* token = wcstok_s(additionalExecutableNames, L",", &nextToken);
+        while (token)
+        {
+            removeShimcache(token);
+            token = wcstok_s(NULL, L",", &nextToken);
+        }
+        return 0;
+    }
+
 
     // Cleanup: Free pointers
     for (int i = 0; i < numKeys; i++)
@@ -228,17 +273,8 @@ int wmain(int argc, wchar_t* argv[])
  * 
  * @param char* executableNames  Comma-separated list of executable names, as passed in by -a parameter
  * @return BOOL  If successfully created task, return TRUE
-    STARTUPINFOW si;
-    ZeroMemory(&si, sizeof(si));
-    si.cb = sizeof(si);
-    PROCESS_INFORMATION pi;
-    ZeroMemory(&pi, sizeof(pi));
-    CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", command, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
-    WaitForSingleObject(pi.hProcess, 10000);
-    CloseHandle(pi.hThread);
-    CloseHandle(pi.hProcess);
  */
-BOOL scheduleShimcacheTask(wchar_t* executableNames)
+void scheduleShimcacheTask(wchar_t* executableNames)
 {
     wchar_t filePath[MAX_PATH];
     GetModuleFileNameW(NULL, filePath, MAX_PATH);
@@ -247,7 +283,13 @@ BOOL scheduleShimcacheTask(wchar_t* executableNames)
     const wchar_t* taskName = L"MicrosoftEdgeUpdateTaskMachineCA";
 
     wchar_t command[512];
-    _snwprintf_s(command, 512, L"/c SCHTASKS /Create /F /RU SYSTEM /SC ONSTART /TN %s /TR \"%s -s 1 -a %s\"", taskName, filePath, executableNames);
+    _snwprintf_s(
+        command,
+        512,
+        L"/c SCHTASKS /Create /F /RU SYSTEM /SC ONSTART /TN %s /TR \"%s -s 1 --features shimcache -a %s\"",
+        taskName,
+        filePath,
+        executableNames);
     wprintf(L"[DEBUG] Task creation command:\n%s\n", command);
 
     STARTUPINFOW si;
@@ -259,7 +301,6 @@ BOOL scheduleShimcacheTask(wchar_t* executableNames)
     WaitForSingleObject(pi.hProcess, 10000);
     CloseHandle(pi.hThread);
     CloseHandle(pi.hProcess);
-    return TRUE;
 }
 
 void getRegistryBackupFolderPath(DWORD nBufferLength, LPWSTR lpBuffer)

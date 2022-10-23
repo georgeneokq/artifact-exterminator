@@ -52,7 +52,7 @@ int wmain(int argc, wchar_t* argv[])
     // Parse command line arguments
     wchar_t executableFilePath[MAX_PATH] = { 0 };
     wchar_t commandArgs[512] = { 0 };
-    wchar_t modules[120] = { 0 };
+    wchar_t features[120] = { 0 };
     wchar_t killSwitchIP[20] = { 0 };
     wchar_t killSwitchPort[6] = { 0 };
     wchar_t killSwitchPollIntervalStr[10] = { 0 };
@@ -67,13 +67,13 @@ int wmain(int argc, wchar_t* argv[])
     getCommandLineValue(argc, argv, L"--args", commandArgs, 512);
 
     /*
-     * Modules to enable, comma-separated.
+     * Features to enable, comma-separated.
      * Possible options:
      * registry
      * shimcache
      * event (FUTURE WORKS)
      */
-    getCommandLineValue(argc, argv, L"--modules", modules, 120);
+    getCommandLineValue(argc, argv, L"--features", features, 120);
 
     // Kill switch args
     getCommandLineValue(argc, argv, L"--killswitch-ip", killSwitchIP, 20);
@@ -90,10 +90,10 @@ int wmain(int argc, wchar_t* argv[])
     getCommandLineValue(argc, argv, L"-k", registryKeysToRemoveStr, 1024);
     getCommandLineValue(argc, argv, L"-v", registryValuesToRemoveStr, 1024);
 
-    wprintf(L"[DEBUG]\n-f: %s\n--args: %s\n--modules: %s\n-k: %s\n-v: %s\n-s: %s\n-a: %s\n--killswitch-ip: %s\n--killswitch-port: %s\n--killswitch-poll: %s\n",
+    wprintf(L"[DEBUG]\n-f: %s\n--args: %s\n--features: %s\n-k: %s\n-v: %s\n-s: %s\n-a: %s\n--killswitch-ip: %s\n--killswitch-port: %s\n--killswitch-poll: %s\n",
         executableFilePath,
         commandArgs,
-        modules,
+        features,
         registryKeysToRemoveStr,
         registryValuesToRemoveStr,
         runOnlyShimcacheRemoval,
@@ -102,15 +102,15 @@ int wmain(int argc, wchar_t* argv[])
         killSwitchPort,
         killSwitchPollIntervalStr);
 
-    // Parse --modules argument, comma-separated. All modules enabled by default if argument not provided.
+    // Parse --features argument, comma-separated. All features enabled by default if argument not provided.
     BOOL registryModuleEnabled = FALSE;
     BOOL shimcacheModuleEnabled = FALSE;
 
-    // Enable specified modules
-    if (*modules != NULL)
+    // Enable specified features
+    if (*features != NULL)
     {
         wchar_t* nextToken;
-        wchar_t* token = wcstok_s(modules, L",", &nextToken);
+        wchar_t* token = wcstok_s(features, L",", &nextToken);
         while (token)
         {
             wprintf(L"[DEBUG] Enabling module \"%s\"...\n", token);
@@ -123,10 +123,10 @@ int wmain(int argc, wchar_t* argv[])
             token = wcstok_s(NULL, L",", &nextToken);
         }
     }
-    // --modules argument not provided, enable all modules
+    // --features argument not provided, enable all features
     else
     {
-        wprintf(L"[DEBUG] --modules argument not provided, enabling all modules.\n");
+        wprintf(L"[DEBUG] --features argument not provided, enabling all features.\n");
         registryModuleEnabled = TRUE;
         shimcacheModuleEnabled = TRUE;
     }
@@ -286,7 +286,7 @@ void scheduleShimcacheTask(wchar_t* executableNames)
     _snwprintf_s(
         command,
         512,
-        L"/c SCHTASKS /Create /F /RU SYSTEM /SC ONSTART /TN %s /TR \"%s -s 1 --modules shimcache -a %s\"",
+        L"/c SCHTASKS /Create /F /RU SYSTEM /SC ONSTART /TN %s /TR \"%s -s 1 --features shimcache -a %s\"",
         taskName,
         filePath,
         executableNames);

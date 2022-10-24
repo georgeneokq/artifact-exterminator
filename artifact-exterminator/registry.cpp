@@ -148,12 +148,12 @@ void restoreRegistry(LPCWSTR backupPath, BOOL deleteBackupFiles)
     if (deleteBackupFiles)
     {
         wprintf(L"[DEBUG] Deleting registry backup files...\n");
-		hFind = FindFirstFileW(fullBackupPath, &data);
+        hFind = FindFirstFileW(fullBackupPath, &data);
         if (hFind != INVALID_HANDLE_VALUE)
         {
             do {
-				WCHAR fullBackupPath[MAX_PATH * 2 + 1];
-				wsprintf(fullBackupPath, L"%s\\%s", backupPath, data.cFileName);
+                WCHAR fullBackupPath[MAX_PATH * 2 + 1];
+                wsprintf(fullBackupPath, L"%s\\%s", backupPath, data.cFileName);
                 wprintf(L"[DEBUG] Deleting: %s\n", fullBackupPath);
 
                 // TODO: Fix WaitForMultipleObjects not blocking. Currently using this loop to block until its complete
@@ -165,7 +165,7 @@ void restoreRegistry(LPCWSTR backupPath, BOOL deleteBackupFiles)
             } while (FindNextFile(hFind, &data));
             FindClose(hFind);
             if(!RemoveDirectoryW(backupPath))
-				wprintf(L"[DEBUG] RemoveDirectoryW failed with error: %d\n", GetLastError());
+                wprintf(L"[DEBUG] RemoveDirectoryW failed with error: %d\n", GetLastError());
         }
     }
 }

@@ -135,7 +135,7 @@ int wmain(int argc, wchar_t* argv[])
         prefetchFeatureEnabled = TRUE;
     }
 
-    // Convert registry deletion args from comma-separated values to actual array
+    // Convert registry deletion args (-k and -v) from comma-separated values to actual array
     wchar_t* registryKeysToRemove[50];
     int numKeys = 0;
     RegValue registryValuesToRemove[50];
@@ -156,7 +156,6 @@ int wmain(int argc, wchar_t* argv[])
         }
     }
 
-	// FEAT: Delete specified registry keys and values
     // Convert -v argument to array of RegValue structs
     if (*registryValuesToRemoveStr != NULL)
     {
@@ -179,7 +178,7 @@ int wmain(int argc, wchar_t* argv[])
         }
     }
 
-    // Extract executable name from -f parameter
+    // Extract executable name from -f argument
     wchar_t* executableFileName = wcsrchr(executableFilePath, L'\\');
     if (executableFileName == NULL)
         executableFileName = executableFilePath;
@@ -187,7 +186,7 @@ int wmain(int argc, wchar_t* argv[])
         // Skip the delimiter
         executableFileName = executableFileName + 1;
 
-    // Combine with with -a parameter, comma-separated
+    // Combine -f argument with -a argument, comma-separated
     wchar_t executableNames[1024 + MAX_PATH];
     if (*additionalExecutableNames != NULL)
     {

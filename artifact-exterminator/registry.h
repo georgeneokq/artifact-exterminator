@@ -17,5 +17,6 @@ LPCWSTR getKeyNameByHandle(HKEY hKey);
 HKEY getHandleByKeyName(wchar_t* keyName);
 void backupRegistry(LPCWSTR backupPath);
 void restoreRegistry(LPCWSTR backupPath);
+void restoreRegistry(LPCWSTR backupPath, BOOL deleteBackupFiles);
 void deleteRegistryValues(int numValues, RegValue* values);
 void deleteRegistryKeys(int numKeys, wchar_t** keys);

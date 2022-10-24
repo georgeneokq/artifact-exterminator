@@ -42,3 +42,14 @@ BOOL IsElevated() {
     }
     return fRet;
 }
+
+// Convert all characters in wide string to uppercase. Modifies the original buffer
+void toUpperString(wchar_t* string)
+{
+    for (int i = 0; ; i++)
+    {
+        if (string[i] == NULL)
+            break;
+        string[i] = towupper(string[i]);
+    }
+}

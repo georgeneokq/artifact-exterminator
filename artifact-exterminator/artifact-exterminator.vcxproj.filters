@@ -30,6 +30,9 @@
     <ClCompile Include="killswitch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="prefetch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="registry.h">
@@ -45,6 +48,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="killswitch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="prefetch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

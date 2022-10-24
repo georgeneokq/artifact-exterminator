@@ -131,6 +131,7 @@
   <ItemGroup>
     <ClCompile Include="killswitch.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="prefetch.cpp" />
     <ClCompile Include="registry.cpp" />
     <ClCompile Include="shimcache.cpp" />
     <ClCompile Include="utils.cpp" />
@@ -138,6 +139,7 @@
   <ItemGroup>
     <ClInclude Include="killswitch.h" />
     <ClInclude Include="main.h" />
+    <ClInclude Include="prefetch.h" />
     <ClInclude Include="registry.h" />
     <ClInclude Include="shimcache.h" />
     <ClInclude Include="utils.h" />

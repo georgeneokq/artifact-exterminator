@@ -12,10 +12,30 @@
 #include "main.h"
 #include "registry.h"
 #include "shimcache.h"
+#include "prefetch.h"
 #include "utils.h"
 #include "killswitch.h"
 
 
+/* 
+ * Argument list. Values should come after their flags, separated by spaces.
+ * e.g. -f C:\Windows\System32\executable.exe
+ * -f File path of executable
+ * --args Arguments for specified executable
+ * --killswitch-ip IPv4 address of kill switch socket
+ * --killswitch-port Port of remote socket
+ * --killswitch-poll Interval for polling, in seconds. Defaults to once every 10 seconds.
+ * -k Registry keys to remove, comma-separated.
+ *    If any part of the argument contains a space, it should be wrapped in quotes.
+ *    The root key can be specified by either its full name or by its shorthand
+ *    i.e. HKEY_LOCAL_MACHINE HKLM
+ * -v Registry values to remove, comma-separated. Value name should come after the key, separated by a colon.
+	  If any part of the argument contains a space, it should be wrapped in quotes.
+ *    e.g. HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache\AppCompatCache
+ * -a Additional file paths to clean up
+ * -s Only run shimcache removal function. The value of this option is not relevant, but is still required.
+ *    e.g. artifact-exterminator.exe -f C:\Windows\System32\executable.exe -s 1
+ */
 int wmain(int argc, wchar_t* argv[])
 {
     // Print a warning message if administrator privileges not detected.
@@ -28,26 +48,6 @@ int wmain(int argc, wchar_t* argv[])
     // Create folder to make registry backup
     CreateDirectoryW(registryBackupFolderPath, NULL);
 
-
-    /* 
-     * Argument list. Values should come after their flags, separated by spaces.
-     * e.g. -f C:\Windows\System32\executable.exe
-     * -f File path of executable
-     * --args Arguments for specified executable
-     * --killswitch-ip IPv4 address of kill switch socket
-     * --killswitch-port Port of remote socket
-     * --killswitch-poll Interval for polling, in seconds. Defaults to once every 10 seconds.
-     * -k Registry keys to remove, comma-separated.
-     *    If any part of the argument contains a space, it should be wrapped in quotes.
-     *    The root key can be specified by either its full name or by its shorthand
-     *    i.e. HKEY_LOCAL_MACHINE HKLM
-     * -v Registry values to remove, comma-separated. Value name should come after the key, separated by a colon.
-          If any part of the argument contains a space, it should be wrapped in quotes.
-     *    e.g. HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache\AppCompatCache
-     * -a Additional file paths to clean up
-     * -s Only run shimcache removal function. The value of this option is not relevant, but is still required.
-     *    e.g. artifact-exterminator.exe -f C:\Windows\System32\executable.exe -s 1
-     */
 
     // Parse command line arguments
     wchar_t executableFilePath[MAX_PATH] = { 0 };
@@ -68,10 +68,10 @@ int wmain(int argc, wchar_t* argv[])
 
     /*
      * Features to enable, comma-separated.
-     * Possible options:
+     * Current possible options:
      * registry
      * shimcache
-     * event (FUTURE WORKS)
+     * prefetch
      */
     getCommandLineValue(argc, argv, L"--features", features, 120);
 
@@ -103,8 +103,9 @@ int wmain(int argc, wchar_t* argv[])
         killSwitchPollIntervalStr);
 
     // Parse --features argument, comma-separated. All features enabled by default if argument not provided.
-    BOOL registryModuleEnabled = FALSE;
-    BOOL shimcacheModuleEnabled = FALSE;
+    BOOL registryFeatureEnabled = FALSE;
+    BOOL shimcacheFeatureEnabled = FALSE;
+    BOOL prefetchFeatureEnabled = FALSE;
 
     // Enable specified features
     if (*features != NULL)
@@ -115,9 +116,11 @@ int wmain(int argc, wchar_t* argv[])
         {
             wprintf(L"[DEBUG] Enabling module \"%s\"...\n", token);
             if (wcscmp(token, L"registry") == 0)
-                registryModuleEnabled = TRUE;
+                registryFeatureEnabled = TRUE;
             else if (wcscmp(token, L"shimcache") == 0)
-                shimcacheModuleEnabled = TRUE;
+                shimcacheFeatureEnabled = TRUE;
+            else if (wcscmp(token, L"prefetch") == 0)
+                prefetchFeatureEnabled = TRUE;
             else
                 wprintf(L"Unknown module \"%s\".\n", token);
             token = wcstok_s(NULL, L",", &nextToken);
@@ -127,8 +130,9 @@ int wmain(int argc, wchar_t* argv[])
     else
     {
         wprintf(L"[DEBUG] --features argument not provided, enabling all features.\n");
-        registryModuleEnabled = TRUE;
-        shimcacheModuleEnabled = TRUE;
+        registryFeatureEnabled = TRUE;
+        shimcacheFeatureEnabled = TRUE;
+        prefetchFeatureEnabled = TRUE;
     }
 
     // Convert registry deletion args from comma-separated values to actual array
@@ -193,14 +197,14 @@ int wmain(int argc, wchar_t* argv[])
     {
         wcsncpy_s(executableNames, executableFileName, wcslen(executableFileName));
     }
-    wprintf(L"[DEBUG] Executables to remove from shimcache: %s\n", executableNames);
+    wprintf(L"[DEBUG] Executables to remove traces of: %s\n", executableNames);
     
     // FEAT: Schedule task to perform shimcache cleanup upon system reboot
-    if(shimcacheModuleEnabled)
+    if(shimcacheFeatureEnabled)
 		scheduleShimcacheTask(executableNames);
 
     // FEAT: Backup registry
-    if(registryModuleEnabled)
+    if(registryFeatureEnabled)
 		backupRegistry(registryBackupFolderPath);
 
     // FEAT: Run executable specified by -f argument
@@ -217,6 +221,9 @@ int wmain(int argc, wchar_t* argv[])
 		WaitForSingleObject(pi.hProcess, INFINITE);
 		CloseHandle(pi.hThread);
 		CloseHandle(pi.hProcess);
+
+        // After closing the executable, artifacts like prefetch files may take some time to be created.
+        Sleep(2000);
     }
 
     // FEAT: Poll for kill switch before performing any cleanup
@@ -231,7 +238,7 @@ int wmain(int argc, wchar_t* argv[])
     }
 
     // FEAT: Restore registry to previous state
-    if (registryModuleEnabled)
+    if (registryFeatureEnabled)
     {
 		restoreRegistry(registryBackupFolderPath);
 		wprintf(L"Deleting registry values...\n");
@@ -242,7 +249,7 @@ int wmain(int argc, wchar_t* argv[])
     }
 
     // Remove shimcache records of specified executable names
-    if (shimcacheModuleEnabled && runOnlyShimcacheRemoval)
+    if (shimcacheFeatureEnabled && runOnlyShimcacheRemoval)
     {
         // Split additionalExecutableNames by comma.
         // For each executable name, remove shimcache record.
@@ -256,6 +263,19 @@ int wmain(int argc, wchar_t* argv[])
         return 0;
     }
 
+    // FEAT: Clear prefetch records of specified executable names
+    if(prefetchFeatureEnabled) {
+        wchar_t* nextToken;
+        wchar_t* token = wcstok_s(executableNames, L",", &nextToken);
+
+        while (token)
+        {
+            wprintf(L"[DEBUG] Removing prefetch file for %s\n", token);
+            if (!clearPrefetch(token))
+                wprintf(L"[DEBUG] Unable to find prefetch file for %s\n", token);
+            token = wcstok_s(NULL, L",", &nextToken);
+        }
+    }
 
     // Cleanup: Free pointers
     for (int i = 0; i < numKeys; i++)

@@ -98,9 +98,18 @@ void backupRegistry(LPCWSTR backupPath)
 
 void restoreRegistry(LPCWSTR backupPath)
 {
+    restoreRegistry(backupPath, TRUE);
+}
+
+/*
+ * As a workaround for WaitForMultipleObjects not blocking (still unsure of reason),
+ * deleteBackupFiles parameter should always be true.
+ */
+void restoreRegistry(LPCWSTR backupPath, BOOL deleteBackupFiles)
+{
     // Use reg import on the reg files in the specified path
     WCHAR fullBackupPath[MAX_PATH * 2 + 1];
-    wsprintf(fullBackupPath, L"%s\\*", backupPath);
+    wsprintf(fullBackupPath, L"%s\\*.reg", backupPath);
     WIN32_FIND_DATA data;
     HANDLE hFind = FindFirstFileW(fullBackupPath, &data);
     
@@ -111,8 +120,6 @@ void restoreRegistry(LPCWSTR backupPath)
     int fileIndex = 0;
     if ( hFind != INVALID_HANDLE_VALUE ) {
         do {
-            if (wcscmp(data.cFileName, L".") == 0 || wcscmp(data.cFileName, L"..") == 0)
-                continue;
             // Form the file name for backup
             WCHAR fullBackupPath[MAX_PATH * 2 + 1];
             wsprintf(fullBackupPath, L"%s\\%s", backupPath, data.cFileName);
@@ -123,7 +130,7 @@ void restoreRegistry(LPCWSTR backupPath)
             si.cb = sizeof(si);
             PROCESS_INFORMATION pi;
             ZeroMemory(&pi, sizeof(pi));
-            wsprintf(cmdLine, L"/c reg import %s", fullBackupPath);
+            wsprintf(cmdLine, L"/c reg import \"%s\"", fullBackupPath);
             CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", cmdLine, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
             processInfos[fileIndex] = pi;
             processHandles[fileIndex] = pi.hProcess;
@@ -137,6 +144,30 @@ void restoreRegistry(LPCWSTR backupPath)
         CloseHandle(processInfos[i].hThread);
         CloseHandle(processInfos[i].hProcess);
     }
+
+    if (deleteBackupFiles)
+    {
+        wprintf(L"[DEBUG] Deleting registry backup files...\n");
+		hFind = FindFirstFileW(fullBackupPath, &data);
+        if (hFind != INVALID_HANDLE_VALUE)
+        {
+            do {
+				WCHAR fullBackupPath[MAX_PATH * 2 + 1];
+				wsprintf(fullBackupPath, L"%s\\%s", backupPath, data.cFileName);
+                wprintf(L"[DEBUG] Deleting: %s\n", fullBackupPath);
+
+                // TODO: Fix WaitForMultipleObjects not blocking. Currently using this loop to block until its complete
+                while (!DeleteFileW(fullBackupPath) && GetLastError() == 32)
+                {
+                    wprintf(L"[DEBUG] DeleteFileW failed because reg import is still running. Retrying...\n", GetLastError());
+                    Sleep(1000);
+                }
+            } while (FindNextFile(hFind, &data));
+            FindClose(hFind);
+            if(!RemoveDirectoryW(backupPath))
+				wprintf(L"[DEBUG] RemoveDirectoryW failed with error: %d\n", GetLastError());
+        }
+    }
 }
 
 void deleteRegistryKeys(int numKeys, wchar_t** keys)
@@ -145,8 +176,6 @@ void deleteRegistryKeys(int numKeys, wchar_t** keys)
     {
         wchar_t* key = keys[i];
         wchar_t* rootKeyName;
-        // Extract root key from string
-        wchar_t* nextToken;
 
         // Root key
         wchar_t* separatorPtr = wcschr(key, L'\\');
@@ -172,8 +201,6 @@ void deleteRegistryValues(int numValues, RegValue* values)
     {
         RegValue regValue = values[i];
         wchar_t* rootKeyName;
-        // Extract root key from string
-        wchar_t* nextToken;
 
         // Root key
         wchar_t* separatorPtr = wcschr(regValue.keyName, L'\\');

@@ -1,0 +1,3 @@
+[submodule "artifact-exterminator-malware"]
+	path = artifact-exterminator-malware
+	url = https://github.com/georgeneokq/artifact-exterminator-malware

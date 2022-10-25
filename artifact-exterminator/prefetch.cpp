@@ -35,16 +35,16 @@ BOOL clearPrefetch(wchar_t* executableName)
     
     if ( hFind != INVALID_HANDLE_VALUE )
     {
-		if (wcswcs(data.cFileName, capitalizedExecutableName) != NULL)
-		{
-			WCHAR deleteFilePath[MAX_PATH * 2 + 1];
-			wsprintf(deleteFilePath, L"C:\\Windows\\Prefetch\\%s", data.cFileName);
-			wprintf(L"[DEBUG] Found prefetch file to delete: %s\n", deleteFilePath);
+        if (wcswcs(data.cFileName, capitalizedExecutableName) != NULL)
+        {
+            WCHAR deleteFilePath[MAX_PATH * 2 + 1];
+            wsprintf(deleteFilePath, L"C:\\Windows\\Prefetch\\%s", data.cFileName);
+            wprintf(L"[DEBUG] Found prefetch file to delete: %s\n", deleteFilePath);
             if (!DeleteFileW(deleteFilePath))
                 wprintf(L"[DEBUG] DeleteFileW on prefetch file failed. Error: %d", GetLastError());
-			free(capitalizedExecutableName);
-			return TRUE;
-		}
+            free(capitalizedExecutableName);
+            return TRUE;
+        }
         FindClose(hFind);
     }
     free(capitalizedExecutableName);

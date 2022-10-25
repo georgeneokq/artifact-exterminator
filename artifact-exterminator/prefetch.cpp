@@ -21,8 +21,20 @@ BOOL clearPrefetch(wchar_t* executableName)
 
     WIN32_FIND_DATA data;
     HANDLE hFind = FindFirstFileW(prefetchFilesPath, &data);
+
+    // For some reason, .exe extension of a file is not included in prefetch file name.
+    // Remove the extension and try again
+    if (hFind == INVALID_HANDLE_VALUE)
+    {
+        wchar_t* separatorPtr = wcsrchr(capitalizedExecutableName, L'.');
+        int separatorPos = separatorPtr - capitalizedExecutableName;
+        capitalizedExecutableName[separatorPos] = '\0';
+        wsprintf(prefetchFilesPath, L"C:\\Windows\\Prefetch\\%s*", capitalizedExecutableName);
+        hFind = FindFirstFileW(prefetchFilesPath, &data);
+    }
     
-    if ( hFind != INVALID_HANDLE_VALUE ) {
+    if ( hFind != INVALID_HANDLE_VALUE )
+    {
 		if (wcswcs(data.cFileName, capitalizedExecutableName) != NULL)
 		{
 			WCHAR deleteFilePath[MAX_PATH * 2 + 1];

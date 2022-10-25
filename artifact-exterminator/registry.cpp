@@ -159,7 +159,7 @@ void restoreRegistry(LPCWSTR backupPath, BOOL deleteBackupFiles)
                 // TODO: Fix WaitForMultipleObjects not blocking. Currently using this loop to block until its complete
                 while (!DeleteFileW(fullBackupPath) && GetLastError() == 32)
                 {
-                    wprintf(L"[DEBUG] DeleteFileW failed because reg import is still running. Retrying...\n", GetLastError());
+                    wprintf(L"[DEBUG] DeleteFileW failed because reg import is still running. Retrying...\n");
                     Sleep(1000);
                 }
             } while (FindNextFile(hFind, &data));

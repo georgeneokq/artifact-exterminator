@@ -21,18 +21,30 @@ BOOL clearPrefetch(wchar_t* executableName)
 
     WIN32_FIND_DATA data;
     HANDLE hFind = FindFirstFileW(prefetchFilesPath, &data);
+
+    // For some reason, .exe extension of a file is not included in prefetch file name.
+    // Remove the extension and try again
+    if (hFind == INVALID_HANDLE_VALUE)
+    {
+        wchar_t* separatorPtr = wcsrchr(capitalizedExecutableName, L'.');
+        int separatorPos = separatorPtr - capitalizedExecutableName;
+        capitalizedExecutableName[separatorPos] = '\0';
+        wsprintf(prefetchFilesPath, L"C:\\Windows\\Prefetch\\%s*", capitalizedExecutableName);
+        hFind = FindFirstFileW(prefetchFilesPath, &data);
+    }
     
-    if ( hFind != INVALID_HANDLE_VALUE ) {
-		if (wcswcs(data.cFileName, capitalizedExecutableName) != NULL)
-		{
-			WCHAR deleteFilePath[MAX_PATH * 2 + 1];
-			wsprintf(deleteFilePath, L"C:\\Windows\\Prefetch\\%s", data.cFileName);
-			wprintf(L"[DEBUG] Found prefetch file to delete: %s\n", deleteFilePath);
+    if ( hFind != INVALID_HANDLE_VALUE )
+    {
+        if (wcswcs(data.cFileName, capitalizedExecutableName) != NULL)
+        {
+            WCHAR deleteFilePath[MAX_PATH * 2 + 1];
+            wsprintf(deleteFilePath, L"C:\\Windows\\Prefetch\\%s", data.cFileName);
+            wprintf(L"[DEBUG] Found prefetch file to delete: %s\n", deleteFilePath);
             if (!DeleteFileW(deleteFilePath))
                 wprintf(L"[DEBUG] DeleteFileW on prefetch file failed. Error: %d", GetLastError());
-			free(capitalizedExecutableName);
-			return TRUE;
-		}
+            free(capitalizedExecutableName);
+            return TRUE;
+        }
         FindClose(hFind);
     }
     free(capitalizedExecutableName);

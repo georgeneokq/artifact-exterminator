@@ -35,6 +35,12 @@
  * -a Additional file paths to clean up
  * -s Only run shimcache removal function. The value of this option is not relevant, but is still required.
  *    e.g. artifact-exterminator.exe -f C:\Windows\System32\executable.exe -s 1
+ *    The user should almost never have to use this argument. This is mainly used when scheduling a task to clear the shimcache.
+ * --features Specify features to run, comma-separated. If this argument is not provided, all features are ran by default.
+ *            Possible values:
+ *            registry
+ *            shimcache
+ *            prefetch
  */
 int wmain(int argc, wchar_t* argv[])
 {
@@ -259,11 +265,11 @@ int wmain(int argc, wchar_t* argv[])
             removeShimcache(token);
             token = wcstok_s(NULL, L",", &nextToken);
         }
-        return 0;
     }
 
     // FEAT: Clear prefetch records of specified executable names
-    if(prefetchFeatureEnabled) {
+    if(prefetchFeatureEnabled)
+    {
         wchar_t* nextToken;
         wchar_t* token = wcstok_s(executableNames, L",", &nextToken);
 

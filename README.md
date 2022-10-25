@@ -34,14 +34,15 @@ artifact-exterminator.exe -f artifact-exterminator-malware.exe --args 15 -k "HKC
 ```
 
 #### All-in-one example with kill switch
-Run the [sample kill switch](https://github.com/georgeneokq/artifact-exterminator/external/sock.py)
-```
-python sock.py
-```
 
-then,
+Run the following command:
 ```
 artifact-exterminator.exe -f artifact-exterminator-malware.exe --args 15 -k "HKCU\Keyboard Layout\MaliciousKey1,HKCU\Keyboard Layout\MaliciousKey2" -v "HKCU\Control Panel\Mouse:MaliciousValue1,HKCU\Control Panel\Mouse:MaliciousValue2" --features registry,shimcache,prefetch --killswitch-ip 127.0.0.1 --killswitch-port 8080
+```
+
+When the program starts to indicate that it is attempting to connect to the specified kill switch, run the [sample kill switch](https://github.com/georgeneokq/artifact-exterminator/external/sock.py) and wait the timeout until the kill switch is activated:
+```
+python sock.py
 ```
 
 #### Open a file with notepad and remove traces after notepad is closed

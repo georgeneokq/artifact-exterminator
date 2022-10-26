@@ -28,14 +28,14 @@ Values should come after their flags, separated by spaces.
 
 #### All-in-one example: Run sample malware and remove all traces
 
-Download [artifact-exterminator-malware](https://github.com/georgeneokq/artifact-exterminator/external/artifact-exterminator-malware), attach a .exe extension to the file name and run the following command.
+Download [artifact-exterminator-malware](https://github.com/georgeneokq/artifact-exterminator/tree/main/external/artifact-exterminator-malware.zip), attach a .exe extension to the file name and run the following command.
 ```
 artifact-exterminator.exe -f artifact-exterminator-malware.exe --args 15 -k "HKCU\Keyboard Layout\MaliciousKey1,HKCU\Keyboard Layout\MaliciousKey2" -v "HKCU\Control Panel\Mouse:MaliciousValue1,HKCU\Control Panel\Mouse:MaliciousValue2" --features registry,shimcache,prefetch
 ```
 
 #### All-in-one example with kill switch
 
-Run the following command:
+Run the following command with [artifact-exterminator-malware](https://github.com/georgeneokq/artifact-exterminator/tree/main/external/artifact-exterminator-malware.zip):
 ```
 artifact-exterminator.exe -f artifact-exterminator-malware.exe --args 15 -k "HKCU\Keyboard Layout\MaliciousKey1,HKCU\Keyboard Layout\MaliciousKey2" -v "HKCU\Control Panel\Mouse:MaliciousValue1,HKCU\Control Panel\Mouse:MaliciousValue2" --features registry,shimcache,prefetch --killswitch-ip 127.0.0.1 --killswitch-port 8080
 ```

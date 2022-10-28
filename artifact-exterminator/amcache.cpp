@@ -9,6 +9,7 @@ void removeAmcache(wchar_t* executableName)
     PROCESS_INFORMATION pi;
     ZeroMemory(&pi, sizeof(pi));
     wchar_t cmdLineArgs[120];
+
     wcsncpy_s(cmdLineArgs, L"/c REG LOAD HKLM\\AM C:\\Windows\\appcompat\\Programs\\Amcache.hve", 119);
     int createProcessStatus = CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", cmdLineArgs, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
     WaitForSingleObject(pi.hProcess, 10);
@@ -16,7 +17,9 @@ void removeAmcache(wchar_t* executableName)
     CloseHandle(pi.hProcess);
 
     HKEY hKey;
+    DWORD numKeys = 0;
     RegOpenKeyW(HKEY_LOCAL_MACHINE, L"AM\\Root\\InventoryApplicationFile", &hKey);
+	RegQueryInfoKey(hKey, NULL, NULL, NULL, &numKeys, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
     // Amcache max length of exe name in keys is 16 and all in lowercase
     wchar_t executableNameTruncated[17];
@@ -29,14 +32,9 @@ void removeAmcache(wchar_t* executableName)
     wchar_t keyName[256];
     int index = 0;
     DWORD cchName = 256;
-    do
+    for(int i = 0; i < numKeys; i++)
     {
-        keyName[0] = '\0';
         RegEnumKeyExW(hKey, index, keyName, &cchName, NULL, NULL, NULL, NULL);
-
-        // No more keys to enumerate
-        if (keyName[0] == '\0')
-            break;
 
         wprintf(L"[DEBUG] Enumerating key: %s\n", keyName);
 
@@ -45,13 +43,15 @@ void removeAmcache(wchar_t* executableName)
         // Found the key to delete!
         if (substrPtr != NULL)
         {
-			wprintf(L"[DEBUG] Deleting key: %s\n", keyName);
-            //int err = RegDeleteKeyW(hKey, keyName);
-            //wprintf(L"[DEBUG] Error for deleting key in amcache: %d\n", err);
+            wprintf(L"[DEBUG] Deleting key: %s\n", keyName);
+            int err = RegDeleteKeyW(hKey, keyName);
+            wprintf(L"[DEBUG] Error for deleting key in amcache: %d\n", err);
 
-            //if (err == ERROR_SUCCESS)
-                //wprintf(L"[DEBUG] Successfully deleted key: %s\n", keyName);
+            if (err == ERROR_SUCCESS)
+                wprintf(L"[DEBUG] Successfully deleted key: %s\n", keyName);
+
+            break;
         }
-
-    } while (TRUE);
+        index++;
+    }
 }

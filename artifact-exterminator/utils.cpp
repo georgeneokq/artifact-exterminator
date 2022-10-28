@@ -53,3 +53,14 @@ void toUpperString(wchar_t* string)
         string[i] = towupper(string[i]);
     }
 }
+
+// Convert all characters in wide string to lowercase. Modifies the original buffer
+void toLowerString(wchar_t* string)
+{
+    for (int i = 0; ; i++)
+    {
+        if (string[i] == NULL)
+            break;
+        string[i] = towlower(string[i]);
+    }
+}

@@ -15,6 +15,7 @@
 #include "prefetch.h"
 #include "utils.h"
 #include "killswitch.h"
+#include "amcache.h"
 
 
 /* 
@@ -54,7 +55,6 @@ int wmain(int argc, wchar_t* argv[])
     // Create folder to make registry backup
     CreateDirectoryW(registryBackupFolderPath, NULL);
 
-
     // Parse command line arguments
     wchar_t executableFilePath[MAX_PATH] = { 0 };
     wchar_t commandArgs[512] = { 0 };
@@ -78,6 +78,7 @@ int wmain(int argc, wchar_t* argv[])
      * registry
      * shimcache
      * prefetch
+     * amcache
      */
     getCommandLineValue(argc, argv, L"--features", features, 120);
 
@@ -112,6 +113,7 @@ int wmain(int argc, wchar_t* argv[])
     BOOL registryFeatureEnabled = FALSE;
     BOOL shimcacheFeatureEnabled = FALSE;
     BOOL prefetchFeatureEnabled = FALSE;
+    BOOL amcacheFeatureEnabled = FALSE;
 
     // Enable specified features
     if (*features != NULL)
@@ -127,6 +129,8 @@ int wmain(int argc, wchar_t* argv[])
                 shimcacheFeatureEnabled = TRUE;
             else if (wcscmp(token, L"prefetch") == 0)
                 prefetchFeatureEnabled = TRUE;
+            else if (wcscmp(token, L"amcache") == 0)
+                amcacheFeatureEnabled = TRUE;
             else
                 wprintf(L"Unknown module \"%s\".\n", token);
             token = wcstok_s(NULL, L",", &nextToken);
@@ -139,6 +143,7 @@ int wmain(int argc, wchar_t* argv[])
         registryFeatureEnabled = TRUE;
         shimcacheFeatureEnabled = TRUE;
         prefetchFeatureEnabled = TRUE;
+        amcacheFeatureEnabled = TRUE;
     }
 
     // Convert registry deletion args (-k and -v) from comma-separated values to actual array
@@ -185,24 +190,52 @@ int wmain(int argc, wchar_t* argv[])
     }
 
     // Extract executable name from -f argument
-    wchar_t* executableFileName = wcsrchr(executableFilePath, L'\\');
-    if (executableFileName == NULL)
-        executableFileName = executableFilePath;
-    else
-        // Skip the delimiter
-        executableFileName = executableFileName + 1;
-
-    // Combine -f argument with -a argument, comma-separated
+    wchar_t* executableFileName;
     wchar_t executableNames[1024 + MAX_PATH];
-    if (*additionalExecutableNames != NULL)
+    executableNames[0] = '\0';
+
+    // If -f parameter exists, executableNames string will be a combination of -f and -a (if -a exists)
+    if (*executableFilePath == NULL && *additionalExecutableNames == NULL)
     {
-        swprintf_s(executableNames, L"%s,%s", additionalExecutableNames, executableFileName);
+        wprintf(L"[ERROR] Either -f or -a argument must be provided.\n");
+        return 1;
     }
+    else if (*executableFilePath != NULL)
+    {
+		executableFileName = wcsrchr(executableFilePath, L'\\');
+		if (executableFileName == NULL)
+			executableFileName = executableFilePath;
+		else
+			// Skip the delimiter
+			executableFileName = executableFileName + 1;
+
+		// Combine -f argument with -a argument, comma-separated
+		if (*additionalExecutableNames != NULL)
+			swprintf_s(executableNames, L"%s,%s", additionalExecutableNames, executableFileName);
+		else
+			wcsncpy_s(executableNames, executableFileName, wcslen(executableFileName));
+    }
+    // If -f parameter doesn't exist, fill executableNames with -a
     else
     {
-        wcsncpy_s(executableNames, executableFileName, wcslen(executableFileName));
+        wcsncpy_s(executableNames, 1024 + MAX_PATH, additionalExecutableNames, wcslen(additionalExecutableNames));
     }
+
     wprintf(L"[DEBUG] Executables to remove traces of: %s\n", executableNames);
+
+    // Convert the executableNames string to an array of items. Assume a max of 100 items
+    wchar_t* executableNamesArr[100] = { 0 };
+
+    {
+        wchar_t* nextToken;
+        wchar_t* token = wcstok_s(executableNames, L",", &nextToken);
+
+        for (int i = 0; token && i < 100; i++)
+        {
+            executableNamesArr[i] = token;
+            token = wcstok_s(NULL, L",", &nextToken);
+        }
+    }
     
     // FEAT: Schedule task to perform shimcache cleanup upon system reboot
     if(shimcacheFeatureEnabled)
@@ -256,29 +289,40 @@ int wmain(int argc, wchar_t* argv[])
     // Remove shimcache records of specified executable names
     if (shimcacheFeatureEnabled && runOnlyShimcacheRemoval)
     {
-        // Split additionalExecutableNames by comma.
         // For each executable name, remove shimcache record.
-        wchar_t* nextToken;
-        wchar_t* token = wcstok_s(additionalExecutableNames, L",", &nextToken);
-        while (token)
+        for(int i = 0; i < 100; i++)
         {
-            removeShimcache(token);
-            token = wcstok_s(NULL, L",", &nextToken);
+            wchar_t* executableName = executableNamesArr[i];
+            if (executableName == NULL)
+                break;
+            removeShimcache(executableName);
         }
     }
 
     // FEAT: Clear prefetch records of specified executable names
     if(prefetchFeatureEnabled)
     {
-        wchar_t* nextToken;
-        wchar_t* token = wcstok_s(executableNames, L",", &nextToken);
-
-        while (token)
+        for(int i = 0; i < 100; i++)
         {
-            wprintf(L"[DEBUG] Removing prefetch file for %s\n", token);
-            if (!clearPrefetch(token))
-                wprintf(L"[DEBUG] Unable to find prefetch file for %s\n", token);
-            token = wcstok_s(NULL, L",", &nextToken);
+            wchar_t* executableName = executableNamesArr[i];
+            if (executableName == NULL)
+                break;
+
+            wprintf(L"[DEBUG] Removing prefetch file for %s\n", executableName);
+            if (!clearPrefetch(executableName))
+                wprintf(L"[DEBUG] Unable to find prefetch file for %s\n", executableName);
+        }
+    }
+
+    if (amcacheFeatureEnabled)
+    {
+        for(int i = 0; i < 100; i++)
+        {
+            wchar_t* executableName = executableNamesArr[i];
+            if (executableName == NULL)
+                break;
+
+            removeAmcache(executableName);
         }
     }
 

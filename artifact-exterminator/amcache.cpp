@@ -24,23 +24,25 @@ void removeAmcache(wchar_t* executableName)
     TCHAR  achValue[MAX_VALUE_NAME];
     DWORD cchValue = MAX_VALUE_NAME;
 
-    // Deletes the associated Amcache entry
-    STARTUPINFOW si;
-    ZeroMemory(&si, sizeof(si));
-    si.cb = sizeof(si);
-    PROCESS_INFORMATION pi;
-    ZeroMemory(&pi, sizeof(pi));
-    wchar_t cmdLineArgs[120];
+    {
+        // Deletes the associated Amcache entry
+        STARTUPINFOW si;
+        ZeroMemory(&si, sizeof(si));
+        si.cb = sizeof(si);
+        PROCESS_INFORMATION pi;
+        ZeroMemory(&pi, sizeof(pi));
+        wchar_t cmdLineArgs[120];
 
-    wcsncpy_s(cmdLineArgs, L"/c REG LOAD HKLM\\AM C:\\Windows\\appcompat\\Programs\\Amcache.hve", 119);
-    int createProcessStatus = CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", cmdLineArgs, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
-    WaitForSingleObject(pi.hProcess, 10);
-    CloseHandle(pi.hThread);
-    CloseHandle(pi.hProcess);
+        wcsncpy_s(cmdLineArgs, L"/c REG LOAD HKLM\\AM C:\\Windows\\appcompat\\Programs\\Amcache.hve", 119);
+        int createProcessStatus = CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", cmdLineArgs, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
+        WaitForSingleObject(pi.hProcess, 10);
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
+    }
+    Sleep(3000);
 
     HKEY hKey;
     RegOpenKeyW(HKEY_LOCAL_MACHINE, L"AM\\Root\\InventoryApplicationFile", &hKey);
-
 
     // Amcache max length of exe name in keys is 16 and all in lowercase
     wchar_t executableNameTruncated[17];
@@ -90,5 +92,21 @@ void removeAmcache(wchar_t* executableName)
                 }
             }
         }
+    }
+
+    {
+        // Deletes the associated Amcache entry
+        STARTUPINFOW si;
+        ZeroMemory(&si, sizeof(si));
+        si.cb = sizeof(si);
+        PROCESS_INFORMATION pi;
+        ZeroMemory(&pi, sizeof(pi));
+        wchar_t cmdLineArgs[50];
+
+        wcsncpy_s(cmdLineArgs, L"/c REG UNLOAD HKLM\\AM", 119);
+        int createProcessStatus = CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", cmdLineArgs, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
+        WaitForSingleObject(pi.hProcess, 10);
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
     }
 }

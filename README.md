@@ -16,11 +16,12 @@ For a high-level overview of this project, [read this page](docs/idea.md).
 - *-k* Registry keys to remove, comma-separated
 - *-v* Registry values to remove, comma-separated. Value name should come after the key, separated by colon. e.g. `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache:AppCompatCache`. The root key can be specified by either its full name or by its shorthand, like `HKLM`
 - *-a* Additional file names to remove traces of, comma-separated
-- *-s* Only run shimcache removal function. The value of this option is not relevant, but is still required. e.g. `artifact-exterminator.exe -s 1 -a calc.exe,mimikatz.exe`. This argument is mainly for internal use within the program code for scheduling tasks to clear shimcache upon system reboot.
+- *-s* Run the second part (after system reboot) of specified features, if applicable. Some artifacts such as Shimcache and Amcache are viewable only after system reboot. The value of this option is not relevant, but is still required. e.g. `artifact-exterminator.exe -s 1 -a notepad.exe,mimikatz.exe`. This argument is mainly for internal use within the program code for scheduling tasks.
 - *--features* Specify features to run, comma-separated. If this argument is not provided, all features are ran by default. Possible values:
   - registry
   - shimcache
   - prefetch
+  - amcache
 
 Values should come after their flags, separated by spaces.
 

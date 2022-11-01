@@ -129,6 +129,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="amcache.cpp" />
     <ClCompile Include="killswitch.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="prefetch.cpp" />
@@ -137,6 +138,7 @@
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="amcache.h" />
     <ClInclude Include="killswitch.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="prefetch.h" />

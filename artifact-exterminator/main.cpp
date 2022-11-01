@@ -31,7 +31,7 @@
  *    The root key can be specified by either its full name or by its shorthand
  *    i.e. HKEY_LOCAL_MACHINE HKLM
  * -v Registry values to remove, comma-separated. Value name should come after the key, separated by a colon.
-	  If any part of the argument contains a space, it should be wrapped in quotes.
+      If any part of the argument contains a space, it should be wrapped in quotes.
  *    e.g. HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache\AppCompatCache
  * -a Additional file paths to clean up
  * -s Running as scheduled task. The value of this option is not relevant, but is still required.
@@ -203,18 +203,18 @@ int wmain(int argc, wchar_t* argv[])
     }
     else if (*executableFilePath != NULL)
     {
-		executableFileName = wcsrchr(executableFilePath, L'\\');
-		if (executableFileName == NULL)
-			executableFileName = executableFilePath;
-		else
-			// Skip the delimiter
-			executableFileName = executableFileName + 1;
+        executableFileName = wcsrchr(executableFilePath, L'\\');
+        if (executableFileName == NULL)
+            executableFileName = executableFilePath;
+        else
+            // Skip the delimiter
+            executableFileName = executableFileName + 1;
 
-		// Combine -f argument with -a argument, comma-separated
-		if (*additionalExecutableNames != NULL)
-			swprintf_s(executableNames, L"%s,%s", additionalExecutableNames, executableFileName);
-		else
-			wcsncpy_s(executableNames, executableFileName, wcslen(executableFileName));
+        // Combine -f argument with -a argument, comma-separated
+        if (*additionalExecutableNames != NULL)
+            swprintf_s(executableNames, L"%s,%s", additionalExecutableNames, executableFileName);
+        else
+            wcsncpy_s(executableNames, executableFileName, wcslen(executableFileName));
     }
     // If -f parameter doesn't exist, fill executableNames with -a
     else
@@ -240,7 +240,7 @@ int wmain(int argc, wchar_t* argv[])
     
     // FEAT: Schedule task to perform shimcache cleanup upon system reboot
     if(shimcacheFeatureEnabled)
-		scheduleShimcacheTask(executableNames);
+        scheduleShimcacheTask(executableNames);
 
     // FEAT: Schedule task to perform amcache cleanup upon system reboot
     if (amcacheFeatureEnabled)
@@ -248,22 +248,22 @@ int wmain(int argc, wchar_t* argv[])
 
     // FEAT: Backup registry
     if(registryFeatureEnabled)
-		backupRegistry(registryBackupFolderPath);
+        backupRegistry(registryBackupFolderPath);
 
     // FEAT: Run executable specified by -f argument
     if (*executableFilePath != NULL)
     {
-		STARTUPINFOW si;
-		ZeroMemory(&si, sizeof(si));
-		si.cb = sizeof(si);
-		PROCESS_INFORMATION pi;
-		ZeroMemory(&pi, sizeof(pi));
-		wchar_t command[512 + MAX_PATH];
-		wsprintf(command, L"/c %s %s", executableFilePath, commandArgs);
-		CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", command, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
-		WaitForSingleObject(pi.hProcess, INFINITE);
-		CloseHandle(pi.hThread);
-		CloseHandle(pi.hProcess);
+        STARTUPINFOW si;
+        ZeroMemory(&si, sizeof(si));
+        si.cb = sizeof(si);
+        PROCESS_INFORMATION pi;
+        ZeroMemory(&pi, sizeof(pi));
+        wchar_t command[512 + MAX_PATH];
+        wsprintf(command, L"/c %s %s", executableFilePath, commandArgs);
+        CreateProcessW(L"C:\\Windows\\System32\\cmd.exe", command, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
 
         // After closing the executable, artifacts like prefetch files may take some time to be created.
         Sleep(2000);
@@ -272,23 +272,23 @@ int wmain(int argc, wchar_t* argv[])
     // FEAT: Poll for kill switch before performing any cleanup
     if (*killSwitchIP != NULL && *killSwitchPort != NULL)
     {
-		int killSwitchPollInterval = 10;
-		int port = _wtoi(killSwitchPort);
-		if (*killSwitchPollIntervalStr != NULL)
-			killSwitchPollInterval = _wtoi(killSwitchPollIntervalStr);
+        int killSwitchPollInterval = 10;
+        int port = _wtoi(killSwitchPort);
+        if (*killSwitchPollIntervalStr != NULL)
+            killSwitchPollInterval = _wtoi(killSwitchPollIntervalStr);
 
-		pollKillSwitch(killSwitchIP, port, killSwitchPollInterval);
+        pollKillSwitch(killSwitchIP, port, killSwitchPollInterval);
     }
 
     // FEAT: Restore registry to previous state
     if (registryFeatureEnabled)
     {
-		restoreRegistry(registryBackupFolderPath);
-		wprintf(L"Deleting registry values...\n");
-		deleteRegistryValues(numValues, registryValuesToRemove);
+        restoreRegistry(registryBackupFolderPath);
+        wprintf(L"Deleting registry values...\n");
+        deleteRegistryValues(numValues, registryValuesToRemove);
 
-		wprintf(L"Deleting registry keys...\n");
-		deleteRegistryKeys(numKeys, registryKeysToRemove);
+        wprintf(L"Deleting registry keys...\n");
+        deleteRegistryKeys(numKeys, registryKeysToRemove);
     }
 
     // Remove shimcache records of specified executable names

@@ -299,7 +299,9 @@ int wmain(int argc, wchar_t* argv[])
         {
             wchar_t* executableName = executableNamesArr[i];
             if (executableName == NULL)
+            {
                 break;
+            }
             removeShimcache(executableName);
         }
     }
@@ -326,8 +328,9 @@ int wmain(int argc, wchar_t* argv[])
         {
             wchar_t* executableName = executableNamesArr[i];
             if (executableName == NULL)
+            {
                 break;
-
+            }
             removeAmcache(executableName);
         }
     }

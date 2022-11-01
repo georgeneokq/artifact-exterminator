@@ -92,6 +92,7 @@ void removeShimcache(LPCWSTR executableName)
 			// If executable name has been found the previously processed record, add to shimcacheEntryIndexes array.
 			if (executableNameFound)
 			{
+				wprintf(L"EXE FOUND\n");
 				currentEntryIndexes.endIndex = loopIndex - 1;
 				shimcacheEntryIndexes[numMatches] = currentEntryIndexes;
 				numMatches++;
@@ -171,7 +172,8 @@ void removeShimcache(LPCWSTR executableName)
 		bytesCopied++;
 		loopIndex++;
 	}
-
+	RegSetKeyValueW(hKey, NULL, L"AppCompatCache", REG_BINARY, copyBuf, bytesCopied);
+	wprintf(L"DEBUG: Writing to Value!\n");
 	RegCloseKey(hKey);
 
 	// Write to AppCompatCache located in ControlSet001 and ControlSet002 (if it exists). CurrentControlSet is a symlink.

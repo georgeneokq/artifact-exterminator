@@ -26,6 +26,7 @@
  * --killswitch-ip IPv4 address of kill switch socket
  * --killswitch-port Port of remote socket
  * --killswitch-poll Interval for polling, in seconds. Defaults to once every 10 seconds.
+ * -d Amount of time to delay before performing cleanup, in seconds. A sleep timer is started after the executable finishes running.
  * -k Registry keys to remove, comma-separated.
  *    If any part of the argument contains a space, it should be wrapped in quotes.
  *    The root key can be specified by either its full name or by its shorthand
@@ -67,10 +68,12 @@ int wmain(int argc, wchar_t* argv[])
     wchar_t registryValuesToRemoveStr[1024] = { 0 };
     wchar_t scheduledTaskRunning[2] = { 0 };
     wchar_t additionalExecutableNames[1024] = { 0 };
+    wchar_t cleanupDelay[20] = { 0 };
 
     getCommandLineValue(argc, argv, L"-a", additionalExecutableNames, 1024);
-    getCommandLineValue(argc, argv, L"-s", scheduledTaskRunning, 2);
     getCommandLineValue(argc, argv, L"-f", executableFilePath, MAX_PATH);
+    getCommandLineValue(argc, argv, L"-s", scheduledTaskRunning, 2);
+    getCommandLineValue(argc, argv, L"-d", cleanupDelay, 10);
     getCommandLineValue(argc, argv, L"--args", commandArgs, 512);
 
     /*
@@ -266,7 +269,13 @@ int wmain(int argc, wchar_t* argv[])
         CloseHandle(pi.hProcess);
 
         // After closing the executable, artifacts like prefetch files may take some time to be created.
-        Sleep(2000);
+        int delay = 3;  // Default delay of 3 seconds
+        if (*cleanupDelay != NULL)
+        {
+            delay = _wtoi(cleanupDelay);
+        }
+        wprintf(L"Performing cleanup after %d seconds.\n", delay);
+        sleepWithCountdown(delay);
     }
 
     // FEAT: Poll for kill switch before performing any cleanup

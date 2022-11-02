@@ -6,3 +6,4 @@ BOOL getCommandLineValue(int argc, wchar_t* argv[], const wchar_t* option, wchar
 BOOL IsElevated();
 void toUpperString(wchar_t* string);
 void toLowerString(wchar_t* string);
+void sleepWithCountdown(int seconds);

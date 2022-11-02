@@ -64,3 +64,13 @@ void toLowerString(wchar_t* string)
         string[i] = towlower(string[i]);
     }
 }
+
+// Sleep, but print a countdown message in between every second
+void sleepWithCountdown(int seconds)
+{
+    for (int remainingTime = seconds; remainingTime > 0; remainingTime--)
+    {
+        wprintf(L"%d seconds remaining...\n", remainingTime);
+        Sleep(1000);
+    }
+}

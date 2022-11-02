@@ -274,6 +274,7 @@ int wmain(int argc, wchar_t* argv[])
         {
             delay = _wtoi(cleanupDelay);
         }
+        wprintf(L"Performing cleanup after %d seconds.\n", delay);
         sleepWithCountdown(delay);
     }
 

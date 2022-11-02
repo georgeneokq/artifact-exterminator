@@ -24,8 +24,6 @@ void removeAmcache(wchar_t* executableName)
     TCHAR  achValue[MAX_VALUE_NAME];
     DWORD cchValue = MAX_VALUE_NAME;
 
-
-    Sleep(60000);
     {
         // Deletes the associated Amcache entry
         STARTUPINFOW si;

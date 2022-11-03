@@ -74,3 +74,21 @@ void sleepWithCountdown(int seconds)
         Sleep(1000);
     }
 }
+
+// Get current process file name using GetModuleFileNameW
+void getCurrentProcessFileName(wchar_t* buf, size_t bufsize)
+{
+    wchar_t filePath[MAX_PATH];
+    GetModuleFileNameW(NULL, filePath, MAX_PATH);
+    wchar_t* fileName;
+    wchar_t* sep = wcsrchr(filePath, L'\\');
+    if (sep != NULL)
+    {
+        fileName = sep + 1;
+    }
+    else
+    {
+        fileName = filePath;
+    }
+    wcsncpy_s(buf, bufsize, fileName, MAX_PATH + 1);
+}

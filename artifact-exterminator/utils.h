@@ -7,3 +7,4 @@ BOOL IsElevated();
 void toUpperString(wchar_t* string);
 void toLowerString(wchar_t* string);
 void sleepWithCountdown(int seconds);
+void getCurrentProcessFileName(wchar_t* buf, size_t bufsize);

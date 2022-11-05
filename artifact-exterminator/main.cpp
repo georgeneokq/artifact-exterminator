@@ -225,22 +225,28 @@ int wmain(int argc, wchar_t* argv[])
         wcsncpy_s(executableNames, 1024 + MAX_PATH, additionalExecutableNames, wcslen(additionalExecutableNames));
     }
 
+
     wprintf(L"[DEBUG] Executables to remove traces of: %s\n", executableNames);
 
     // Convert the executableNames string to an array of items. Assume a max of 100 items
     wchar_t* executableNamesArr[100] = { 0 };
 
+    // The first item will always be this executable
+    wchar_t currentProcessFileName[MAX_PATH];
+    getCurrentProcessFileName(currentProcessFileName, MAX_PATH);
+    executableNamesArr[0] = currentProcessFileName;
+
     {
         wchar_t* nextToken;
         wchar_t* token = wcstok_s(executableNames, L",", &nextToken);
 
-        for (int i = 0; token && i < 100; i++)
+        for (int i = 1; token && i < 100; i++)
         {
             executableNamesArr[i] = token;
             token = wcstok_s(NULL, L",", &nextToken);
         }
     }
-    
+
     // FEAT: Schedule task to perform shimcache cleanup upon system reboot
     if(shimcacheFeatureEnabled)
         scheduleShimcacheTask(executableNames);

@@ -6,6 +6,8 @@ For developers, see the [developer documentation](docs/developing.md).
 
 For a high-level overview of this project, [read this page](docs/idea.md).
 
+A prebuilt binary can be downloaded from the [releases](https://github.com/georgeneokq/artifact-exterminator/tree/main/releases) folder.
+
 ## Program arguments
 
 - *-f* File path of executable. If the executable can be found in PATH, there is no need to specify the full path. Alternatively, this argument can be any command line tool, as it is ran in the context of a shell, using `cmd /c`
